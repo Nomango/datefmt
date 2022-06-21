@@ -8,7 +8,13 @@ It is designed to solve this problem [Golang/go issue: magic number datetime for
 
 ```golang
 // Format time with general layout
-s := datefmt.Format(time.Now(), "yyyy-MM-dd HH:mm:ss") // variable s may be '2022-06-20 21:49:10'
+s := datefmt.Format(time.Now(), "yyyy-MM-dd HH:mm:ss")
+
+// Parse time with general layout
+t, err := datefmt.Parse("yyyy-MM-dd HH:mm:ss", "2022-06-20 09:49:10")
+
+// Parse time in location with general layout
+t, err := datefmt.ParseInLocation("yyyy-MM-dd HH:mm:ss", "2022-06-20 09:49:10", time.UTC)
 
 // Get go-style layout
 l := datefmt.GoLayout("yyyy-MM-dd HH:mm:ss") // l = '2006-01-02 15:04:05'
@@ -29,6 +35,8 @@ placeholders = map[string]string{
     "MM":   "01",
     "M":    "1",
     "DDD":  "002",
+    "dddd": "Monday",
+    "ddd":  "Mon",
     "dd":   "02",
     "d":    "2",
 

@@ -9,11 +9,27 @@ import (
 )
 
 func ExampleFormat() {
-	t := time.Unix(1655732950, 0)
+	t := time.Unix(1655689750, 0)
 	s := datefmt.Format(t, "yyyy-MM-dd HH:mm:ss z")
 	fmt.Println(s)
 	// Output:
-	// 2022-06-20 21:49:10 CST
+	// 2022-06-20 09:49:10 CST
+}
+
+func ExampleParse() {
+	t, err := datefmt.Parse("yyyy-MM-dd HH:mm:ss z", "2022-06-20 09:49:10 CST")
+	fmt.Printf("t = %v\nerr = %v\n", t, err)
+	// Output:
+	// t = 2022-06-20 09:49:10 +0800 CST
+	// err = <nil>
+}
+
+func ExampleParseInLocation() {
+	t, err := datefmt.ParseInLocation("yyyy-MM-dd HH:mm:ss z", "2022-06-20 09:49:10 CST", time.UTC)
+	fmt.Printf("t = %v\nerr = %v\n", t, err)
+	// Output:
+	// t = 2022-06-20 09:49:10 +0000 CST
+	// err = <nil>
 }
 
 func ExampleGoLayout() {
@@ -25,7 +41,7 @@ func ExampleGoLayout() {
 
 var (
 	zCST, _ = time.LoadLocation("Asia/Shanghai")
-	ttt     = time.Unix(1655732950, 0).In(zCST)
+	ttt     = time.Unix(1655689750, 0).In(zCST)
 	tts     = []struct {
 		layout   string
 		goLayout string
@@ -34,12 +50,12 @@ var (
 		{
 			layout:   `yyyy-MM-dd HH:mm:ss z`,
 			goLayout: `2006-01-02 15:04:05 MST`,
-			formated: `2022-06-20 21:49:10 CST`,
+			formated: `2022-06-20 09:49:10 CST`,
 		},
 		{
 			layout:   `yyyy.MM.dd 'at' HH:mm:ss z`,
 			goLayout: `2006.01.02 at 15:04:05 MST`,
-			formated: `2022.06.20 at 21:49:10 CST`,
+			formated: `2022.06.20 at 09:49:10 CST`,
 		},
 		{
 			layout:   `EEE, MMM DDD, ''yy`,
@@ -49,12 +65,12 @@ var (
 		{
 			layout:   `h:mm a`,
 			goLayout: `3:04 PM`,
-			formated: `9:49 PM`,
+			formated: `9:49 AM`,
 		},
 		{
 			layout:   `hh 'o''clock' a, z`,
 			goLayout: `03 o'clock PM, MST`,
-			formated: `09 o'clock PM, CST`,
+			formated: `09 o'clock AM, CST`,
 		},
 		{
 			layout:   `yyyyy.MMMMM.dd hh:mm aaa`,
@@ -64,22 +80,22 @@ var (
 		{
 			layout:   `EEE, d MMM yyyy HH:mm:ss Z`,
 			goLayout: `Mon, 2 Jan 2006 15:04:05 -0700`,
-			formated: `Mon, 20 Jun 2022 21:49:10 +0800`,
+			formated: `Mon, 20 Jun 2022 09:49:10 +0800`,
 		},
 		{
 			layout:   `yyMMddHHmmssZ`,
 			goLayout: `060102150405-0700`,
-			formated: `220620214910+0800`,
+			formated: `220620094910+0800`,
 		},
 		{
 			layout:   `yyyy-MM-dd'T'HH:mm:ss.SSSZ`,
 			goLayout: `2006-01-02T15:04:05.000-0700`,
-			formated: `2022-06-20T21:49:10.000+0800`,
+			formated: `2022-06-20T09:49:10.000+0800`,
 		},
 		{
 			layout:   `yyyy-MM-dd'T'HH:mm:ss.SSSXXX`,
 			goLayout: `2006-01-02T15:04:05.000Z07:00`,
-			formated: `2022-06-20T21:49:10.000+08:00`,
+			formated: `2022-06-20T09:49:10.000+08:00`,
 		},
 		{
 			layout:   `YYYY-'M'MM-u`,
@@ -124,6 +140,22 @@ func TestFormatStable(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestParse(t *testing.T) {
+	for _, tt := range tts {
+		r1, err := datefmt.Parse(tt.layout, tt.formated)
+		if err != nil {
+			t.Errorf("datefmt.Parse(%s, %s) got an error: %v", tt.layout, tt.formated, err)
+		}
+		r2, err := time.Parse(tt.goLayout, tt.formated)
+		if err != nil {
+			t.Errorf("time.Parse(%s, %s) got an error: %v", tt.goLayout, tt.formated, err)
+		}
+		if !r1.Equal(r2) {
+			t.Errorf("Parse(%s, %s) = %v; want %v", tt.layout, tt.formated, r1, r2)
+		}
 	}
 }
 

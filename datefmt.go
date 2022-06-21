@@ -6,12 +6,22 @@ import (
 	"time"
 )
 
-// Format returns a textual representation of the time value formatted according to the general layout.
+// Format is a general layout based version of time.Format
 func Format(t time.Time, generalLayout string) string {
 	return t.Format(GoLayout(generalLayout))
 }
 
-// GoLayout returns a go-style layout based on general layout.
+// Parse is a general layout based version of time.Parse
+func Parse(generalLayout, value string) (time.Time, error) {
+	return time.Parse(GoLayout(generalLayout), value)
+}
+
+// ParseInLocation is a general layout based version of time.ParseInLocation
+func ParseInLocation(generalLayout, value string, loc *time.Location) (time.Time, error) {
+	return time.ParseInLocation(GoLayout(generalLayout), value, loc)
+}
+
+// GoLayout returns a go-style layout according to the general layout defined by the argument.
 func GoLayout(generalLayout string) string {
 	v, ok := layoutCache.Load(generalLayout)
 	if ok {
@@ -23,7 +33,7 @@ func GoLayout(generalLayout string) string {
 
 var layoutCache sync.Map
 
-func goLayout(generalLayout string) (goLayout string) {
+func goLayout(generalLayout string) string {
 	var (
 		s  state
 		sb strings.Builder
@@ -105,6 +115,8 @@ var (
 		"MM":   "01",
 		"M":    "1",
 		"DDD":  "002",
+		"dddd": "Monday",
+		"ddd":  "Mon",
 		"dd":   "02",
 		"d":    "2",
 
