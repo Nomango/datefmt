@@ -35,41 +35,49 @@ var layoutCache sync.Map
 
 func goLayout(generalLayout string) string {
 	var (
-		ph []rune
-		sb strings.Builder
-		q  bool // quote
-		lt rune // last token
+		l  = []rune(generalLayout)
+		n  = len(l)
+		sb = strings.Builder{}
 	)
-	for _, token := range generalLayout {
-		if len(ph) > 0 && token != ph[0] {
-			sb.WriteString(getToken(ph))
-			ph = nil
+	for i := 0; i < n; i++ {
+		if !tokens[l[i]] {
+			sb.WriteRune(l[i])
+			continue
 		}
-		if token == '\'' {
-			if lt == '\'' {
-				// write a single quotation
-				sb.WriteRune('\'')
-				lt = 0
-				q = !q
-				continue
-			} else {
-				// begin or end of quote
-				q = !q
+		// quote
+		if l[i] == '\'' {
+			for i++; i < n; i++ {
+				if l[i] == '\'' {
+					if l[i-1] == '\'' {
+						// real quote
+						sb.WriteByte('\'')
+						break
+					} else if i < n-1 && l[i+1] == '\'' {
+						// real quote
+						sb.WriteByte('\'')
+						i++
+						continue
+					} else {
+						// end of text
+						break
+					}
+				}
+				// text delimiter
+				sb.WriteRune(l[i])
 			}
-		} else {
-			if q {
-				// in quote
-				sb.WriteRune(token)
-			} else if tokens[token] {
-				ph = append(ph, token)
-			} else {
-				sb.WriteRune(token)
-			}
+			continue
 		}
-		lt = token
-	}
-	if len(ph) > 0 {
-		sb.WriteString(getToken(ph))
+		// find consecutive tokens
+		s, e, token := i, i, l[i]
+		i++
+		for i < n {
+			if l[i] != token {
+				break
+			}
+			e = i
+			i++
+		}
+		sb.WriteString(getPlaceholder(l[s : e+1]))
 	}
 	return sb.String()
 }
@@ -97,6 +105,8 @@ var (
 		'z': true,
 		'Z': true,
 		'X': true,
+
+		'\'': true,
 	}
 
 	placeholders = map[string]string{
@@ -136,7 +146,7 @@ var (
 	}
 )
 
-func getToken(ph []rune) string {
+func getPlaceholder(ph []rune) string {
 	tmp := ph
 	if len(tmp) > 4 {
 		tmp = tmp[:4]
