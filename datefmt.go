@@ -35,15 +35,15 @@ var layoutCache sync.Map
 
 func goLayout(generalLayout string) string {
 	var (
-		s  state
+		ph []rune
 		sb strings.Builder
 		q  bool // quote
 		lt rune // last token
 	)
 	for _, token := range generalLayout {
-		if s.token != 0 && token != s.token {
-			sb.WriteString(getToken(s))
-			s = state{}
+		if len(ph) > 0 && token != ph[0] {
+			sb.WriteString(getToken(ph))
+			ph = nil
 		}
 		if token == '\'' {
 			if lt == '\'' {
@@ -61,23 +61,17 @@ func goLayout(generalLayout string) string {
 				// in quote
 				sb.WriteRune(token)
 			} else if tokens[token] {
-				s.token = token
-				s.placeholder += string(token)
+				ph = append(ph, token)
 			} else {
 				sb.WriteRune(token)
 			}
 		}
 		lt = token
 	}
-	if s.token != 0 {
-		sb.WriteString(getToken(s))
+	if len(ph) > 0 {
+		sb.WriteString(getToken(ph))
 	}
 	return sb.String()
-}
-
-type state struct {
-	token       rune
-	placeholder string
 }
 
 var (
@@ -142,13 +136,13 @@ var (
 	}
 )
 
-func getToken(s state) string {
-	ph := s.placeholder
-	if len(ph) > 4 {
-		ph = ph[:4]
+func getToken(ph []rune) string {
+	tmp := ph
+	if len(tmp) > 4 {
+		tmp = tmp[:4]
 	}
-	if goPh, ok := placeholders[ph]; ok {
+	if goPh, ok := placeholders[string(tmp)]; ok {
 		return goPh
 	}
-	return s.placeholder // Do not modify
+	return string(ph) // Do not modify
 }

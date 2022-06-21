@@ -1,5 +1,7 @@
 # datefmt
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/Nomango/datefmt.svg)](https://pkg.go.dev/github.com/Nomango/datefmt)
+
 A date format tool based on general layout for Golang.
 
 It is designed to solve this problem [Golang/go issue: magic number datetime formatting](https://github.com/golang/go/issues/38871).
