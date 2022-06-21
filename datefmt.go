@@ -69,13 +69,12 @@ func goLayout(generalLayout string) string {
 		}
 		// find consecutive tokens
 		s, e, token := i, i, l[i]
-		i++
-		for i < n {
+		for i++; i < n; i++ {
 			if l[i] != token {
+				i--
 				break
 			}
 			e = i
-			i++
 		}
 		sb.WriteString(getPlaceholder(l[s : e+1]))
 	}

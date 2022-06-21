@@ -9,27 +9,26 @@ import (
 )
 
 func ExampleFormat() {
-	t := time.Unix(1655689750, 0)
-	s := datefmt.Format(t, "yyyy-MM-dd HH:mm:ss z")
+	t := time.Unix(1655689750, 0).In(time.UTC)
+	s := datefmt.Format(t, "yyyy-MM-dd HH:mm:ss Z z")
 	fmt.Println(s)
 	// Output:
-	// 2022-06-20 09:49:10 CST
+	// 2022-06-20 01:49:10 +0000 UTC
 }
 
 func ExampleParse() {
-	t, err := datefmt.Parse("yyyy-MM-dd HH:mm:ss z", "2022-06-20 09:49:10 CST")
-	fmt.Printf("t = %v\nerr = %v\n", t, err)
+	t, _ := datefmt.Parse("yyyy-MM-dd HH:mm:ss Z z", "2022-06-20 09:49:10 +0800 CST")
+	t = t.In(time.UTC)
+	fmt.Println(t)
 	// Output:
-	// t = 2022-06-20 09:49:10 +0800 CST
-	// err = <nil>
+	// 2022-06-20 01:49:10 +0000 UTC
 }
 
 func ExampleParseInLocation() {
-	t, err := datefmt.ParseInLocation("yyyy-MM-dd HH:mm:ss z", "2022-06-20 09:49:10 CST", time.UTC)
-	fmt.Printf("t = %v\nerr = %v\n", t, err)
+	t, _ := datefmt.ParseInLocation("yyyy-MM-dd HH:mm:ss z", "2022-06-20 09:49:10 CST", time.UTC)
+	fmt.Println(t)
 	// Output:
-	// t = 2022-06-20 09:49:10 +0000 CST
-	// err = <nil>
+	// 2022-06-20 09:49:10 +0000 CST
 }
 
 func ExampleGoLayout() {
