@@ -3,7 +3,9 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/Nomango/datefmt.svg)](https://pkg.go.dev/github.com/Nomango/datefmt)
 [![Github status](https://github.com/Nomango/datefmt/actions/workflows/UnitTest.yml/badge.svg?branch=main)](https://github.com/Nomango/datefmt/actions)
 [![GitHub release](https://img.shields.io/github/release/nomango/datefmt)](https://github.com/Nomango/datefmt/releases/latest)
-[![GitHub license](https://img.shields.io/github/license/nomango/datefmt)](https://github.com/Nomango/datefmt/blob/main/LICENSE)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/9dd32aab87364903a57f32543f3bf738)](https://www.codacy.com/gh/Nomango/datefmt/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Nomango/datefmt&amp;utm_campaign=Badge_Grade)
+[![Codacy Badge](https://app.codacy.com/project/badge/Coverage/9dd32aab87364903a57f32543f3bf738)](https://www.codacy.com/gh/Nomango/datefmt/dashboard?utm_source=github.com&utm_medium=referral&utm_content=Nomango/datefmt&utm_campaign=Badge_Coverage)
+[![License](https://img.shields.io/github/license/nomango/datefmt)](https://github.com/Nomango/datefmt/blob/main/LICENSE)
 
 A date format tool based on general layout for Golang.
 
