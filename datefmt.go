@@ -2,16 +2,28 @@ package datefmt
 
 import (
 	"strings"
+	"sync"
 	"time"
 )
 
 // Format returns a textual representation of the time value formatted according to the general layout.
 func Format(t time.Time, generalLayout string) string {
-	return t.Format(Layout(generalLayout))
+	return t.Format(GoLayout(generalLayout))
 }
 
-// Layout returns a go-style layout based on general layout.
-func Layout(generalLayout string) (goLayout string) {
+// GoLayout returns a go-style layout based on general layout.
+func GoLayout(generalLayout string) string {
+	v, ok := layoutCache.Load(generalLayout)
+	if ok {
+		return v.(string)
+	}
+	v, _ = layoutCache.LoadOrStore(generalLayout, goLayout(generalLayout))
+	return v.(string)
+}
+
+var layoutCache sync.Map
+
+func goLayout(generalLayout string) (goLayout string) {
 	var (
 		s  state
 		sb strings.Builder

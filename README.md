@@ -2,6 +2,8 @@
 
 A date format tool based on general layout for Golang.
 
+It is designed to solve this problem [Golang/go issue: magic number datetime formatting](https://github.com/golang/go/issues/38871).
+
 ## Usage
 
 ```golang
@@ -9,7 +11,7 @@ A date format tool based on general layout for Golang.
 s := datefmt.Format(time.Now(), "yyyy-MM-dd HH:mm:ss") // variable s may be '2022-06-20 21:49:10'
 
 // Get go-style layout
-l := datefmt.Layout("yyyy-MM-dd HH:mm:ss") // l = '2006-01-02 15:04:05'
+l := datefmt.GoLayout("yyyy-MM-dd HH:mm:ss") // l = '2006-01-02 15:04:05'
 ```
 
 The format of the layout is similar to the time pattern definition in Java.
