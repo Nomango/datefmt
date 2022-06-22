@@ -42,8 +42,6 @@ placeholders = map[string]string{
     "MM":   "01",
     "M":    "1",
     "DDD":  "002",
-    "dddd": "Monday",
-    "ddd":  "Mon",
     "dd":   "02",
     "d":    "2",
 

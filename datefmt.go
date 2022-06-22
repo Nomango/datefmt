@@ -35,13 +35,15 @@ var layoutCache sync.Map
 
 func goLayout(generalLayout string) string {
 	var (
-		l  = []rune(generalLayout)
-		n  = len(l)
-		sb = strings.Builder{}
+		l   = []byte(generalLayout)
+		n   = len(l)
+		sb  = strings.Builder{}
+		max = n + 20
 	)
+	sb.Grow(max)
 	for i := 0; i < n; i++ {
 		if !tokens[l[i]] {
-			sb.WriteRune(l[i])
+			sb.WriteByte(l[i])
 			continue
 		}
 		// quote
@@ -63,7 +65,7 @@ func goLayout(generalLayout string) string {
 					}
 				}
 				// text delimiter
-				sb.WriteRune(l[i])
+				sb.WriteByte(l[i])
 			}
 			continue
 		}
@@ -82,7 +84,7 @@ func goLayout(generalLayout string) string {
 }
 
 var (
-	tokens = map[rune]bool{
+	tokens = map[byte]bool{
 		'y': true,
 		'Y': true,
 		'M': true,
@@ -118,8 +120,6 @@ var (
 		"MM":   "01",
 		"M":    "1",
 		"DDD":  "002",
-		"dddd": "Monday",
-		"ddd":  "Mon",
 		"dd":   "02",
 		"d":    "2",
 
@@ -145,7 +145,7 @@ var (
 	}
 )
 
-func getPlaceholder(ph []rune) string {
+func getPlaceholder(ph []byte) string {
 	tmp := ph
 	if len(tmp) > 4 {
 		tmp = tmp[:4]
