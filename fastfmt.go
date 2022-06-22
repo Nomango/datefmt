@@ -84,6 +84,7 @@ func fastLayout(generalLayout string) *layout {
 		// flush buffer
 		if sb.Len() > 0 {
 			l.args = append(l.args, sb.String())
+			l.max += sb.Len()
 			sb.Reset()
 		}
 		// find consecutive tokens
@@ -95,56 +96,64 @@ func fastLayout(generalLayout string) *layout {
 			}
 			e = i
 		}
-		l.args = append(l.args, getFormatArg(gl[s:e+1]))
+		f, max := getFormatArg(gl[s : e+1])
+		l.args = append(l.args, f)
+		l.max += max
 	}
 	if sb.Len() > 0 {
 		l.args = append(l.args, sb.String())
+		l.max += sb.Len()
 	}
 	return &l
 }
 
+type formatArgWithMax struct {
+	max int
+	f   formatArg
+}
+
 var (
-	formatArgs = map[string]formatArg{
-		"YYYY": func(t *time.Time) string { return strconv.Itoa(t.Year()) },
-		"yyyy": func(t *time.Time) string { return strconv.Itoa(t.Year()) },
-		"YY":   func(t *time.Time) string { return strconv.Itoa(t.Year())[2:4] },
-		"yy":   func(t *time.Time) string { return strconv.Itoa(t.Year())[2:4] },
-		"MMMM": func(t *time.Time) string { return t.Month().String() },
-		"MMM":  func(t *time.Time) string { return t.Month().String()[:3] },
-		"MM":   func(t *time.Time) string { return readOnlyBytes2String(formatZero2(int(t.Month()))) },
-		"M":    func(t *time.Time) string { return readOnlyBytes2String(formatMax99(int(t.Month()))) },
-		"DDD":  func(t *time.Time) string { return readOnlyBytes2String(formatZero3(t.YearDay())) },
-		"dd":   func(t *time.Time) string { return readOnlyBytes2String(formatZero2(t.Day())) },
-		"d":    func(t *time.Time) string { return readOnlyBytes2String(formatMax99(t.Day())) },
-		"EEEE": func(t *time.Time) string { return t.Weekday().String() },
-		"EEE":  func(t *time.Time) string { return t.Weekday().String()[:3] },
-		"HH":   func(t *time.Time) string { return readOnlyBytes2String(formatZero2(t.Hour())) },
-		"hh":   func(t *time.Time) string { return "TODO" },
-		"H":    func(t *time.Time) string { return readOnlyBytes2String(formatMax99(t.Hour())) },
-		"h":    func(t *time.Time) string { return "TODO" },
-		"mm":   func(t *time.Time) string { return readOnlyBytes2String(formatZero2(t.Minute())) },
-		"m":    func(t *time.Time) string { return readOnlyBytes2String(formatMax99(t.Minute())) },
-		"ss":   func(t *time.Time) string { return readOnlyBytes2String(formatZero2(t.Second())) },
-		"s":    func(t *time.Time) string { return readOnlyBytes2String(formatMax99(t.Second())) },
-		"SSS":  func(t *time.Time) string { return readOnlyBytes2String(formatZero3(t.Nanosecond() / 1000000)) }, // TODO
-		"a":    func(t *time.Time) string { return "" },
-		"z":    func(t *time.Time) string { z, _ := t.Zone(); return z },
-		"Z":    func(t *time.Time) string { return "" },
-		"X":    func(t *time.Time) string { return "" },
-		"XX":   func(t *time.Time) string { return "" },
-		"XXX":  func(t *time.Time) string { return "" },
+	formatArgs = map[string]formatArgWithMax{
+		"YYYY": {max: 4, f: func(t *time.Time) string { return strconv.Itoa(t.Year()) }},
+		"yyyy": {max: 4, f: func(t *time.Time) string { return strconv.Itoa(t.Year()) }},
+		"YY":   {max: 2, f: func(t *time.Time) string { return strconv.Itoa(t.Year())[2:4] }},
+		"yy":   {max: 2, f: func(t *time.Time) string { return strconv.Itoa(t.Year())[2:4] }},
+		"MMMM": {max: 9, f: func(t *time.Time) string { return t.Month().String() }},
+		"MMM":  {max: 3, f: func(t *time.Time) string { return t.Month().String()[:3] }},
+		"MM":   {max: 2, f: func(t *time.Time) string { return readOnlyBytes2String(formatZero2(int(t.Month()))) }},
+		"M":    {max: 2, f: func(t *time.Time) string { return readOnlyBytes2String(formatMax99(int(t.Month()))) }},
+		"DDD":  {max: 3, f: func(t *time.Time) string { return readOnlyBytes2String(formatZero3(t.YearDay())) }},
+		"dd":   {max: 2, f: func(t *time.Time) string { return readOnlyBytes2String(formatZero2(t.Day())) }},
+		"d":    {max: 2, f: func(t *time.Time) string { return readOnlyBytes2String(formatMax99(t.Day())) }},
+		"EEEE": {max: 9, f: func(t *time.Time) string { return t.Weekday().String() }},
+		"EEE":  {max: 3, f: func(t *time.Time) string { return t.Weekday().String()[:3] }},
+		"HH":   {max: 2, f: func(t *time.Time) string { return readOnlyBytes2String(formatZero2(t.Hour())) }},
+		"hh":   {max: 2, f: func(t *time.Time) string { return "TODO" }},
+		"H":    {max: 2, f: func(t *time.Time) string { return readOnlyBytes2String(formatMax99(t.Hour())) }},
+		"h":    {max: 2, f: func(t *time.Time) string { return "TODO" }},
+		"mm":   {max: 2, f: func(t *time.Time) string { return readOnlyBytes2String(formatZero2(t.Minute())) }},
+		"m":    {max: 2, f: func(t *time.Time) string { return readOnlyBytes2String(formatMax99(t.Minute())) }},
+		"ss":   {max: 2, f: func(t *time.Time) string { return readOnlyBytes2String(formatZero2(t.Second())) }},
+		"s":    {max: 2, f: func(t *time.Time) string { return readOnlyBytes2String(formatMax99(t.Second())) }},
+		"SSS":  {max: 0, f: func(t *time.Time) string { return readOnlyBytes2String(formatZero3(t.Nanosecond() / 1000000)) /*TODO*/ }},
+		"a":    {max: 2, f: func(t *time.Time) string { return "" }},
+		"z":    {max: 0, f: func(t *time.Time) string { z, _ := t.Zone(); return z }},
+		"Z":    {max: 0, f: func(t *time.Time) string { return "" }},
+		"X":    {max: 0, f: func(t *time.Time) string { return "" }},
+		"XX":   {max: 0, f: func(t *time.Time) string { return "" }},
+		"XXX":  {max: 0, f: func(t *time.Time) string { return "" }},
 	}
 )
 
-func getFormatArg(ph []byte) formatArg {
+func getFormatArg(ph []byte) (formatArg, int) {
 	tmp := ph
 	if len(tmp) > 4 {
 		tmp = tmp[:4]
 	}
 	if arg, ok := formatArgs[string(tmp)]; ok {
-		return arg
+		return arg.f, arg.max
 	}
-	return func(*time.Time) string { return string(ph) } // Do not modify
+	return func(*time.Time) string { return string(ph) }, len(ph) // Do not modify
 }
 
 func formatMax9(v int) byte {
