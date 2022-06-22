@@ -5,7 +5,14 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unsafe"
 )
+
+// FastFormat ...
+func FastFormat(t time.Time, generalLayout string) string {
+	l := FastLayout(generalLayout)
+	return l.Format(t)
+}
 
 type formatArg = func(t *time.Time) string
 
@@ -14,11 +21,10 @@ type layout struct {
 	max  int
 }
 
-func FastFormat(t time.Time, generalLayout string) string {
-	fl := FastLayout(generalLayout)
+func (l *layout) Format(t time.Time) string {
 	var sb strings.Builder
-	sb.Grow(fl.max)
-	for _, arg := range fl.args {
+	sb.Grow(l.max)
+	for _, arg := range l.args {
 		switch v := arg.(type) {
 		case string:
 			sb.WriteString(v)
@@ -105,22 +111,22 @@ var (
 		"yy":   func(t *time.Time) string { return strconv.Itoa(t.Year())[2:4] },
 		"MMMM": func(t *time.Time) string { return t.Month().String() },
 		"MMM":  func(t *time.Time) string { return t.Month().String()[:3] },
-		"MM":   func(t *time.Time) string { return formatZero2(int(t.Month())) },
-		"M":    func(t *time.Time) string { return formatMax99(int(t.Month())) },
-		"DDD":  func(t *time.Time) string { return formatZero3(t.YearDay()) },
-		"dd":   func(t *time.Time) string { return formatZero2(t.Day()) },
-		"d":    func(t *time.Time) string { return formatMax99(t.Day()) },
+		"MM":   func(t *time.Time) string { return readOnlyBytes2String(formatZero2(int(t.Month()))) },
+		"M":    func(t *time.Time) string { return readOnlyBytes2String(formatMax99(int(t.Month()))) },
+		"DDD":  func(t *time.Time) string { return readOnlyBytes2String(formatZero3(t.YearDay())) },
+		"dd":   func(t *time.Time) string { return readOnlyBytes2String(formatZero2(t.Day())) },
+		"d":    func(t *time.Time) string { return readOnlyBytes2String(formatMax99(t.Day())) },
 		"EEEE": func(t *time.Time) string { return t.Weekday().String() },
 		"EEE":  func(t *time.Time) string { return t.Weekday().String()[:3] },
-		"HH":   func(t *time.Time) string { return formatZero2(t.Hour()) },
+		"HH":   func(t *time.Time) string { return readOnlyBytes2String(formatZero2(t.Hour())) },
 		"hh":   func(t *time.Time) string { return "TODO" },
-		"H":    func(t *time.Time) string { return formatMax99(t.Hour()) },
+		"H":    func(t *time.Time) string { return readOnlyBytes2String(formatMax99(t.Hour())) },
 		"h":    func(t *time.Time) string { return "TODO" },
-		"mm":   func(t *time.Time) string { return formatZero2(t.Minute()) },
-		"m":    func(t *time.Time) string { return formatMax99(t.Minute()) },
-		"ss":   func(t *time.Time) string { return formatZero2(t.Second()) },
-		"s":    func(t *time.Time) string { return formatMax99(t.Second()) },
-		"SSS":  func(t *time.Time) string { return formatZero3(t.Nanosecond() / 1000000) }, // TODO
+		"mm":   func(t *time.Time) string { return readOnlyBytes2String(formatZero2(t.Minute())) },
+		"m":    func(t *time.Time) string { return readOnlyBytes2String(formatMax99(t.Minute())) },
+		"ss":   func(t *time.Time) string { return readOnlyBytes2String(formatZero2(t.Second())) },
+		"s":    func(t *time.Time) string { return readOnlyBytes2String(formatMax99(t.Second())) },
+		"SSS":  func(t *time.Time) string { return readOnlyBytes2String(formatZero3(t.Nanosecond() / 1000000)) }, // TODO
 		"a":    func(t *time.Time) string { return "" },
 		"z":    func(t *time.Time) string { z, _ := t.Zone(); return z },
 		"Z":    func(t *time.Time) string { return "" },
@@ -141,37 +147,41 @@ func getFormatArg(ph []byte) formatArg {
 	return func(*time.Time) string { return string(ph) } // Do not modify
 }
 
-func formatMax9(v int) string {
-	return string(byte('0' + v))
+func formatMax9(v int) byte {
+	return byte('0' + v)
 }
 
-func formatMax99(v int) string {
-	if v > 10 {
-		return formatMax9(v/10) + formatMax9(v%10)
+func formatMax99(v int) []byte {
+	if v > 9 {
+		return []byte{formatMax9(v / 10), formatMax9(v % 10)}
 	}
-	return formatMax9(v)
+	return []byte{formatMax9(v)}
 }
 
-func formatMax999(v int) string {
-	if v > 100 {
-		return formatMax9(v/100) + formatMax9((v/10)%10) + formatMax9(v%10)
+func formatMax999(v int) []byte {
+	if v > 99 {
+		return []byte{formatMax9(v / 100), formatMax9((v / 10) % 10), formatMax9(v % 10)}
 	}
 	return formatMax99(v)
 }
 
-func formatZero2(v int) string {
-	if v > 10 {
+func formatZero2(v int) []byte {
+	if v > 9 {
 		return formatMax99(v)
 	}
-	return "0" + formatMax9(v)
+	return []byte{'0', formatMax9(v)}
 }
 
-func formatZero3(v int) string {
-	if v > 100 {
+func formatZero3(v int) []byte {
+	if v > 99 {
 		return formatMax999(v)
 	}
-	if v > 10 {
-		return "0" + formatMax99(v)
+	if v > 9 {
+		return []byte{'0', formatMax9(v / 10), formatMax9(v % 10)}
 	}
-	return "00" + formatMax9(v)
+	return []byte{'0', '0', formatMax9(v)}
+}
+
+func readOnlyBytes2String(b []byte) string {
+	return *(*string)(unsafe.Pointer(&b))
 }
