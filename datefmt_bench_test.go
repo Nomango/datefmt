@@ -9,6 +9,7 @@ import (
 func BenchmarkFormat(b *testing.B) {
 	for _, tt := range tts {
 		tt := tt
+		_ = datefmt.GoLayout(tt.layout)
 		b.Run(tt.layout, func(b *testing.B) {
 			b.ReportAllocs()
 			for i := 0; i < b.N; i++ {

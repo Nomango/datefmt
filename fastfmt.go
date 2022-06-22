@@ -15,28 +15,18 @@ func FastFormat(t time.Time, generalLayout string) string {
 type layout struct {
 	max    int
 	flag   formatFlag
-	args   []func(f *formatter) []byte
+	args   []func(f *formatter)
 	layout string
 }
 
 func (l *layout) Format(t time.Time) string {
-	var (
-		f  = formatter{t: t}
-		sb = fastBuilder{}
-	)
-	f.apply(l.flag)
-	sb.Grow(l.max)
-	// cap1 := sb.Cap()
+	f := &formatter{}
+	f.init(l, t)
 	for i := range l.args {
-		sb.Write(l.args[i](&f))
+		l.args[i](f)
 	}
-	// cap2 := sb.Cap()
-	// if sb.Cap() > l.max {
-	// 	fmt.Println(cap1, cap2)
-	// 	panic("cap greater than max!!")
-	// }
 	// fmt.Println("len =", sb.Len(), ", cap =", sb.Cap(), ", max =", l.max)
-	return sb.String()
+	return f.fb.String()
 }
 
 var fastLayoutCache sync.Map
@@ -89,7 +79,7 @@ func newFastLayout(generalLayout string) *layout {
 		if sb.Len() > 0 {
 			// fmt.Println("text =", sb.String())
 			s := sb.String()
-			l.args = append(l.args, func(*formatter) []byte { return string2ReadOnlyBytes(s) })
+			l.args = append(l.args, func(f *formatter) { f.fb.WriteString(s) })
 			l.max += sb.Len()
 			sb.Reset()
 		}
@@ -112,7 +102,7 @@ func newFastLayout(generalLayout string) *layout {
 	if sb.Len() > 0 {
 		// fmt.Println("text =", sb.String())
 		s := sb.String()
-		l.args = append(l.args, func(*formatter) []byte { return string2ReadOnlyBytes(s) })
+		l.args = append(l.args, func(f *formatter) { f.fb.WriteString(s) })
 		l.max += sb.Len()
 	}
 	return &l
@@ -141,68 +131,55 @@ type formatter struct {
 	hour   int
 	minute int
 	second int
+	fb     fastBuilder
 }
 
-func (f *formatter) apply(flag formatFlag) {
-	if flag.Has(formatFlagNeedDate) {
+func (f *formatter) init(l *layout, t time.Time) {
+	if l.flag.Has(formatFlagNeedDate) {
 		f.year, f.month, f.day = f.t.Date()
 	}
-	if flag.Has(formatFlagNeedClock) {
+	if l.flag.Has(formatFlagNeedClock) {
 		f.hour, f.minute, f.second = f.t.Clock()
 	}
+	f.fb.Grow(l.max)
 }
 
 type formatArg struct {
 	max  int
 	flag formatFlag
-	f    func(*formatter) []byte
+	f    func(*formatter)
 }
 
 var (
 	formatArgs = map[string]formatArg{
-		"YYYY": {max: 4, flag: formatFlagNeedDate, f: func(f *formatter) []byte { return formatMax9999(f.year) }},
-		"yyyy": {max: 4, flag: formatFlagNeedDate, f: func(f *formatter) []byte { return formatMax9999(f.year) }},
-		"YY":   {max: 2, flag: formatFlagNeedDate, f: func(f *formatter) []byte { return formatZero2(f.year % 100) }},
-		"yy":   {max: 2, flag: formatFlagNeedDate, f: func(f *formatter) []byte { return formatZero2(f.year % 100) }},
-		"MMMM": {max: 9, flag: formatFlagNeedDate, f: func(f *formatter) []byte { return string2ReadOnlyBytes(f.month.String()) }},
-		"MMM":  {max: 3, flag: formatFlagNeedDate, f: func(f *formatter) []byte { return string2ReadOnlyBytes(f.month.String())[:3] }},
-		"MM":   {max: 2, flag: formatFlagNeedDate, f: func(f *formatter) []byte { return formatZero2(int(f.month)) }},
-		"M":    {max: 2, flag: formatFlagNeedDate, f: func(f *formatter) []byte { return formatMax99(int(f.month)) }},
-		"DDD":  {max: 3, flag: formatFlagNeedDate, f: func(f *formatter) []byte { return (formatZero3(f.t.YearDay())) }},
-		"dd":   {max: 2, flag: formatFlagNeedDate, f: func(f *formatter) []byte { return formatZero2(f.day) }},
-		"d":    {max: 2, flag: formatFlagNeedDate, f: func(f *formatter) []byte { return formatMax99(f.day) }},
-		"EEEE": {max: 9, f: func(f *formatter) []byte { return string2ReadOnlyBytes(f.t.Weekday().String()) }},
-		"EEE":  {max: 3, f: func(f *formatter) []byte { return string2ReadOnlyBytes(f.t.Weekday().String())[:3] }},
-		"HH":   {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) []byte { return formatZero2(f.hour) }},
-		"hh":   {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) []byte { return nil }},
-		"H":    {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) []byte { return formatMax99(f.hour) }},
-		"h":    {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) []byte { return nil }},
-		"mm":   {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) []byte { return formatZero2(f.minute) }},
-		"m":    {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) []byte { return formatMax99(f.minute) }},
-		"ss":   {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) []byte { return formatZero2(f.second) }},
-		"s":    {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) []byte { return formatMax99(f.second) }},
-		"SSS":  {max: 0, f: func(f *formatter) []byte { return formatZero3(f.t.Nanosecond() / 1000000) /*TODO*/ }},
-		"a":    {max: 2, f: func(f *formatter) []byte { return nil }},
-		"z":    {max: 3, f: func(f *formatter) []byte { z, _ := f.t.Zone(); return string2ReadOnlyBytes(z) }},
-		"Z":    {max: 0, f: func(f *formatter) []byte { return nil }},
-		"X":    {max: 0, f: func(f *formatter) []byte { return nil }},
-		"XX":   {max: 0, f: func(f *formatter) []byte { return nil }},
-		"XXX":  {max: 0, f: func(f *formatter) []byte { return nil }},
-	}
-)
-
-var (
-	nums = []byte{
-		'0',
-		'1',
-		'2',
-		'3',
-		'4',
-		'5',
-		'6',
-		'7',
-		'8',
-		'9',
+		"YYYY": {max: 4, flag: formatFlagNeedDate, f: func(f *formatter) { formatMax9999(&f.fb, f.year) }},
+		"yyyy": {max: 4, flag: formatFlagNeedDate, f: func(f *formatter) { formatMax9999(&f.fb, f.year) }},
+		"YY":   {max: 2, flag: formatFlagNeedDate, f: func(f *formatter) { formatZero2(&f.fb, f.year%100) }},
+		"yy":   {max: 2, flag: formatFlagNeedDate, f: func(f *formatter) { formatZero2(&f.fb, f.year%100) }},
+		"MMMM": {max: 9, flag: formatFlagNeedDate, f: func(f *formatter) { f.fb.WriteString(f.month.String()) }},
+		"MMM":  {max: 3, flag: formatFlagNeedDate, f: func(f *formatter) { f.fb.WriteString(f.month.String()[:3]) }},
+		"MM":   {max: 2, flag: formatFlagNeedDate, f: func(f *formatter) { formatZero2(&f.fb, int(f.month)) }},
+		"M":    {max: 2, flag: formatFlagNeedDate, f: func(f *formatter) { formatMax99(&f.fb, int(f.month)) }},
+		"DDD":  {max: 3, flag: formatFlagNeedDate, f: func(f *formatter) { formatZero3(&f.fb, f.t.YearDay()) }},
+		"dd":   {max: 2, flag: formatFlagNeedDate, f: func(f *formatter) { formatZero2(&f.fb, f.day) }},
+		"d":    {max: 2, flag: formatFlagNeedDate, f: func(f *formatter) { formatMax99(&f.fb, f.day) }},
+		"EEEE": {max: 9, f: func(f *formatter) { f.fb.WriteString(f.t.Weekday().String()) }},
+		"EEE":  {max: 3, f: func(f *formatter) { f.fb.WriteString(f.t.Weekday().String()[:3]) }},
+		"HH":   {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) { formatZero2(&f.fb, f.hour) }},
+		"hh":   {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) {}},
+		"H":    {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) { formatMax99(&f.fb, f.hour) }},
+		"h":    {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) {}},
+		"mm":   {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) { formatZero2(&f.fb, f.minute) }},
+		"m":    {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) { formatMax99(&f.fb, f.minute) }},
+		"ss":   {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) { formatZero2(&f.fb, f.second) }},
+		"s":    {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) { formatMax99(&f.fb, f.second) }},
+		"SSS":  {max: 0, f: func(f *formatter) { formatZero3(&f.fb, f.t.Nanosecond()/1000000) /*TODO*/ }},
+		"a":    {max: 2, f: func(f *formatter) {}},
+		"z":    {max: 3, f: func(f *formatter) { z, _ := f.t.Zone(); f.fb.WriteString(z) }},
+		"Z":    {max: 0, f: func(f *formatter) {}},
+		"X":    {max: 0, f: func(f *formatter) {}},
+		"XX":   {max: 0, f: func(f *formatter) {}},
+		"XXX":  {max: 0, f: func(f *formatter) {}},
 	}
 )
 
@@ -214,49 +191,66 @@ func getFormatArg(ph []byte) formatArg {
 	if arg, ok := formatArgs[string(tmp)]; ok {
 		return arg
 	}
-	return formatArg{max: len(ph), f: func(*formatter) []byte { return ph }} // Do not modify
+	return formatArg{max: len(ph), f: func(f *formatter) { f.fb.Write(ph) }} // Do not modify
 }
 
-func formatMax9(v int) byte {
-	return nums[v]
+func formatMax9(b *fastBuilder, v int) {
+	b.WriteByte(byte('0' + v))
 }
 
-func formatMax99(v int) []byte {
+func formatMax99(b *fastBuilder, v int) {
 	if v > 9 {
-		return []byte{formatMax9(v / 10), formatMax9(v % 10)}
+		formatMax9(b, v/10)
+		formatMax9(b, v%10)
+		return
 	}
-	return []byte{formatMax9(v)}
+	formatMax9(b, v)
 }
 
-func formatMax999(v int) []byte {
+func formatMax999(b *fastBuilder, v int) {
 	if v > 99 {
-		return []byte{formatMax9(v / 100), formatMax9((v / 10) % 10), formatMax9(v % 10)}
+		formatMax9(b, v/100)
+		formatMax9(b, (v/10)%10)
+		formatMax9(b, v%10)
+		return
 	}
-	return formatMax99(v)
+	formatMax99(b, v)
 }
 
-func formatMax9999(v int) []byte {
+func formatMax9999(b *fastBuilder, v int) {
 	if v > 999 {
-		return []byte{formatMax9(v / 1000), formatMax9((v / 100) % 10), formatMax9((v / 10) % 10), formatMax9(v % 10)}
+		formatMax9(b, v/1000)
+		formatMax9(b, (v/100)%10)
+		formatMax9(b, (v/10)%10)
+		formatMax9(b, v%10)
+		return
 	}
-	return formatMax999(v)
+	formatMax999(b, v)
 }
 
-func formatZero2(v int) []byte {
+func formatZero2(b *fastBuilder, v int) {
 	if v > 9 {
-		return formatMax99(v)
+		formatMax99(b, v)
+		return
 	}
-	return []byte{'0', formatMax9(v)}
+	formatMax9(b, 0)
+	formatMax9(b, v)
 }
 
-func formatZero3(v int) []byte {
+func formatZero3(b *fastBuilder, v int) {
 	if v > 99 {
-		return formatMax999(v)
+		formatMax999(b, v)
+		return
 	}
 	if v > 9 {
-		return []byte{'0', formatMax9(v / 10), formatMax9(v % 10)}
+		formatMax9(b, 0)
+		formatMax9(b, v/10)
+		formatMax9(b, v%10)
+		return
 	}
-	return []byte{'0', '0', formatMax9(v)}
+	formatMax9(b, 0)
+	formatMax9(b, 0)
+	formatMax9(b, v)
 }
 
 func readOnlyBytes2String(b []byte) string {
@@ -289,6 +283,10 @@ func (b *fastBuilder) Write(p []byte) {
 
 func (b *fastBuilder) WriteByte(c byte) {
 	b.buf = append(b.buf, c)
+}
+
+func (b *fastBuilder) WriteString(s string) {
+	b.buf = append(b.buf, s...)
 }
 
 func (b *fastBuilder) Reset() {
