@@ -15,18 +15,63 @@ func FastFormat(t time.Time, generalLayout string) string {
 type layout struct {
 	max    int
 	flag   formatFlag
-	args   []func(f *formatter)
+	args   []*formatArg
 	layout string
 }
 
 func (l *layout) Format(t time.Time) string {
-	f := &formatter{}
-	f.init(l, t)
-	for i := range l.args {
-		l.args[i](f)
+	var (
+		year       int
+		month      time.Month
+		day        int
+		hour       int
+		minute     int
+		second     int
+		zoneName   string
+		zoneOffset int
+		fb         fastBuilder
+	)
+
+	fb.Grow(l.max)
+	if l.flag.Has(formatFlagNeedDate) {
+		year, month, day = t.Date()
 	}
-	// fmt.Println("len =", sb.Len(), ", cap =", sb.Cap(), ", max =", l.max)
-	return f.fb.String()
+	if l.flag.Has(formatFlagNeedClock) {
+		hour, minute, second = t.Clock()
+	}
+	if l.flag.Has(formatFlagNeedZone) {
+		zoneName, zoneOffset = t.Zone()
+	}
+	for _, arg := range l.args {
+		switch arg.flag {
+		case formatFlagYear:
+			arg.write(&fb, year)
+		case formatFlagMonth:
+			arg.write(&fb, int(month))
+		case formatFlagDay:
+			arg.write(&fb, day)
+		case formatFlagHour:
+			arg.write(&fb, hour)
+		case formatFlagMinute:
+			arg.write(&fb, minute)
+		case formatFlagSecond:
+			arg.write(&fb, second)
+		case formatFlagWeekDay:
+			arg.write(&fb, int(t.Weekday()))
+		case formatFlagNanosecond:
+			arg.write(&fb, t.Nanosecond())
+		case formatFlagZoneName:
+			fb.WriteString(zoneName)
+		case formatFlagZoneOffset:
+			arg.write(&fb, zoneOffset)
+		case formatFlagYearDay:
+			arg.write(&fb, t.YearDay())
+		case formatFlagNone:
+			arg.write(&fb, 0)
+		}
+	}
+	// fmt.Println("len =", fb.Len(), ", cap =", fb.Cap(), ", max =", l.max)
+	return fb.String()
 }
 
 var fastLayoutCache sync.Map
@@ -78,8 +123,7 @@ func newFastLayout(generalLayout string) *layout {
 		// flush buffer
 		if sb.Len() > 0 {
 			// fmt.Println("text =", sb.String())
-			s := sb.String()
-			l.args = append(l.args, func(f *formatter) { f.fb.WriteString(s) })
+			l.args = append(l.args, newBytesFormatArg(getBytesOfBuilder(&sb)))
 			l.max += sb.Len()
 			sb.Reset()
 		}
@@ -94,15 +138,14 @@ func newFastLayout(generalLayout string) *layout {
 		}
 		// fmt.Println("ph =", string(gl[s:e+1]))
 		arg := getFormatArg(gl[s : e+1])
-		l.args = append(l.args, arg.f)
+		l.args = append(l.args, arg)
 		l.max += arg.max
 		l.flag.Add(arg.flag)
 	}
 	// flush buffer
 	if sb.Len() > 0 {
 		// fmt.Println("text =", sb.String())
-		s := sb.String()
-		l.args = append(l.args, func(f *formatter) { f.fb.WriteString(s) })
+		l.args = append(l.args, newBytesFormatArg(getBytesOfBuilder(&sb)))
 		l.max += sb.Len()
 	}
 	return &l
@@ -111,8 +154,25 @@ func newFastLayout(generalLayout string) *layout {
 type formatFlag int
 
 const (
-	formatFlagNeedDate  formatFlag = 1
-	formatFlagNeedClock formatFlag = 1 << 1
+	formatFlagNone formatFlag = iota
+	formatFlagYearDay
+	formatFlagWeekDay
+	formatFlagNanosecond
+
+	formatFlagYear formatFlag = iota + formatFlagNeedDate
+	formatFlagMonth
+	formatFlagDay
+
+	formatFlagHour formatFlag = iota + formatFlagNeedClock
+	formatFlagMinute
+	formatFlagSecond
+
+	formatFlagZoneName formatFlag = iota + formatFlagNeedZone
+	formatFlagZoneOffset
+
+	formatFlagNeedDate  formatFlag = 1 << 0 << 7
+	formatFlagNeedClock formatFlag = 1 << 1 << 7
+	formatFlagNeedZone  formatFlag = 1 << 2 << 7
 )
 
 func (f *formatFlag) Add(flag formatFlag) {
@@ -123,75 +183,79 @@ func (f formatFlag) Has(flag formatFlag) bool {
 	return f&flag != 0
 }
 
-type formatter struct {
-	t      time.Time
-	year   int
-	month  time.Month
-	day    int
-	hour   int
-	minute int
-	second int
-	fb     fastBuilder
-}
-
-func (f *formatter) init(l *layout, t time.Time) {
-	if l.flag.Has(formatFlagNeedDate) {
-		f.year, f.month, f.day = f.t.Date()
-	}
-	if l.flag.Has(formatFlagNeedClock) {
-		f.hour, f.minute, f.second = f.t.Clock()
-	}
-	f.fb.Grow(l.max)
-}
-
 type formatArg struct {
 	max  int
 	flag formatFlag
-	f    func(*formatter)
+
+	write func(fb *fastBuilder, v int)
+}
+
+func newBytesFormatArg(p []byte) *formatArg {
+	return &formatArg{
+		max:   len(p),
+		flag:  formatFlagNone,
+		write: func(fb *fastBuilder, _ int) { fb.Write(p) },
+	}
 }
 
 var (
 	formatArgs = map[string]formatArg{
-		"YYYY": {max: 4, flag: formatFlagNeedDate, f: func(f *formatter) { formatMax9999(&f.fb, f.year) }},
-		"yyyy": {max: 4, flag: formatFlagNeedDate, f: func(f *formatter) { formatMax9999(&f.fb, f.year) }},
-		"YY":   {max: 2, flag: formatFlagNeedDate, f: func(f *formatter) { formatZero2(&f.fb, f.year%100) }},
-		"yy":   {max: 2, flag: formatFlagNeedDate, f: func(f *formatter) { formatZero2(&f.fb, f.year%100) }},
-		"MMMM": {max: 9, flag: formatFlagNeedDate, f: func(f *formatter) { f.fb.WriteString(f.month.String()) }},
-		"MMM":  {max: 3, flag: formatFlagNeedDate, f: func(f *formatter) { f.fb.WriteString(f.month.String()[:3]) }},
-		"MM":   {max: 2, flag: formatFlagNeedDate, f: func(f *formatter) { formatZero2(&f.fb, int(f.month)) }},
-		"M":    {max: 2, flag: formatFlagNeedDate, f: func(f *formatter) { formatMax99(&f.fb, int(f.month)) }},
-		"DDD":  {max: 3, flag: formatFlagNeedDate, f: func(f *formatter) { formatZero3(&f.fb, f.t.YearDay()) }},
-		"dd":   {max: 2, flag: formatFlagNeedDate, f: func(f *formatter) { formatZero2(&f.fb, f.day) }},
-		"d":    {max: 2, flag: formatFlagNeedDate, f: func(f *formatter) { formatMax99(&f.fb, f.day) }},
-		"EEEE": {max: 9, f: func(f *formatter) { f.fb.WriteString(f.t.Weekday().String()) }},
-		"EEE":  {max: 3, f: func(f *formatter) { f.fb.WriteString(f.t.Weekday().String()[:3]) }},
-		"HH":   {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) { formatZero2(&f.fb, f.hour) }},
-		"hh":   {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) {}},
-		"H":    {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) { formatMax99(&f.fb, f.hour) }},
-		"h":    {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) {}},
-		"mm":   {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) { formatZero2(&f.fb, f.minute) }},
-		"m":    {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) { formatMax99(&f.fb, f.minute) }},
-		"ss":   {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) { formatZero2(&f.fb, f.second) }},
-		"s":    {max: 2, flag: formatFlagNeedClock, f: func(f *formatter) { formatMax99(&f.fb, f.second) }},
-		"SSS":  {max: 0, f: func(f *formatter) { formatZero3(&f.fb, f.t.Nanosecond()/1000000) /*TODO*/ }},
-		"a":    {max: 2, f: func(f *formatter) {}},
-		"z":    {max: 3, f: func(f *formatter) { z, _ := f.t.Zone(); f.fb.WriteString(z) }},
-		"Z":    {max: 0, f: func(f *formatter) {}},
-		"X":    {max: 0, f: func(f *formatter) {}},
-		"XX":   {max: 0, f: func(f *formatter) {}},
-		"XXX":  {max: 0, f: func(f *formatter) {}},
+		"YYYY": {max: 4, flag: formatFlagYear, write: func(fb *fastBuilder, v int) { formatMax9999(fb, v) }},
+		"yyyy": {max: 4, flag: formatFlagYear, write: func(fb *fastBuilder, v int) { formatMax9999(fb, v) }},
+		"YY":   {max: 2, flag: formatFlagYear, write: func(fb *fastBuilder, v int) { formatZero2(fb, v%100) }},
+		"yy":   {max: 2, flag: formatFlagYear, write: func(fb *fastBuilder, v int) { formatZero2(fb, v%100) }},
+		"MMMM": {max: 9, flag: formatFlagMonth, write: func(fb *fastBuilder, v int) { fb.WriteString(time.Month(v).String()) }},
+		"MMM":  {max: 3, flag: formatFlagMonth, write: func(fb *fastBuilder, v int) { fb.WriteString(time.Month(v).String()[:3]) }},
+		"MM":   {max: 2, flag: formatFlagMonth, write: func(fb *fastBuilder, v int) { formatZero2(fb, v) }},
+		"M":    {max: 2, flag: formatFlagMonth, write: func(fb *fastBuilder, v int) { formatMax99(fb, v) }},
+		"DDD":  {max: 3, flag: formatFlagNone, write: func(fb *fastBuilder, v int) { formatZero3(fb, v) }},
+		"dd":   {max: 2, flag: formatFlagDay, write: func(fb *fastBuilder, v int) { formatZero2(fb, v) }},
+		"d":    {max: 2, flag: formatFlagDay, write: func(fb *fastBuilder, v int) { formatMax99(fb, v) }},
+		"EEEE": {max: 9, flag: formatFlagWeekDay, write: func(fb *fastBuilder, v int) { fb.WriteString(time.Weekday(v).String()) }},
+		"EEE":  {max: 3, flag: formatFlagWeekDay, write: func(fb *fastBuilder, v int) { fb.WriteString(time.Weekday(v).String()[:3]) }},
+		"HH":   {max: 2, flag: formatFlagHour, write: func(fb *fastBuilder, v int) { formatZero2(fb, v) }},
+		"hh":   {max: 2, flag: formatFlagHour, write: func(fb *fastBuilder, v int) { formatZero2(fb, halfDayHour(v)) }},
+		"H":    {max: 2, flag: formatFlagHour, write: func(fb *fastBuilder, v int) { formatMax99(fb, v) }},
+		"h":    {max: 2, flag: formatFlagHour, write: func(fb *fastBuilder, v int) { formatMax99(fb, halfDayHour(v)) }},
+		"mm":   {max: 2, flag: formatFlagMinute, write: func(fb *fastBuilder, v int) { formatZero2(fb, v) }},
+		"m":    {max: 2, flag: formatFlagMinute, write: func(fb *fastBuilder, v int) { formatMax99(fb, v) }},
+		"ss":   {max: 2, flag: formatFlagSecond, write: func(fb *fastBuilder, v int) { formatZero2(fb, v) }},
+		"s":    {max: 2, flag: formatFlagSecond, write: func(fb *fastBuilder, v int) { formatMax99(fb, v) }},
+		"SSS":  {max: 3, flag: formatFlagNanosecond, write: func(fb *fastBuilder, v int) { formatZero3(fb, v/1000000) }},
+		"a":    {max: 2, flag: formatFlagHour, write: formatPM},
+		"z":    {max: 3, flag: formatFlagZoneName},
+		"Z":    {max: 0, flag: formatFlagZoneOffset, write: func(fb *fastBuilder, v int) {}},
+		"X":    {max: 0, flag: formatFlagZoneOffset, write: func(fb *fastBuilder, v int) {}},
+		"XX":   {max: 0, flag: formatFlagZoneOffset, write: func(fb *fastBuilder, v int) {}},
+		"XXX":  {max: 0, flag: formatFlagZoneOffset, write: func(fb *fastBuilder, v int) {}},
 	}
 )
 
-func getFormatArg(ph []byte) formatArg {
+func formatPM(fb *fastBuilder, v int) {
+	if v >= 12 {
+		fb.WriteString("PM")
+	} else {
+		fb.WriteString("AM")
+	}
+}
+
+func halfDayHour(hour int) int {
+	hour %= 12
+	if hour == 0 {
+		return 12
+	}
+	return hour
+}
+
+func getFormatArg(ph []byte) *formatArg {
 	tmp := ph
 	if len(tmp) > 4 {
 		tmp = tmp[:4]
 	}
 	if arg, ok := formatArgs[string(tmp)]; ok {
-		return arg
+		return &arg
 	}
-	return formatArg{max: len(ph), f: func(f *formatter) { f.fb.Write(ph) }} // Do not modify
+	return newBytesFormatArg(ph) // Do not modify
 }
 
 func formatMax9(b *fastBuilder, v int) {
@@ -261,6 +325,12 @@ func string2ReadOnlyBytes(s string) []byte {
 	return *(*[]byte)(unsafe.Pointer(&s))
 }
 
+// type fastBuilder = strings.Builder
+
+func getBytesOfBuilder(b *fastBuilder) []byte {
+	return string2ReadOnlyBytes(b.String())
+}
+
 type fastBuilder struct {
 	buf []byte
 }
@@ -281,8 +351,9 @@ func (b *fastBuilder) Write(p []byte) {
 	b.buf = append(b.buf, p...)
 }
 
-func (b *fastBuilder) WriteByte(c byte) {
+func (b *fastBuilder) WriteByte(c byte) error {
 	b.buf = append(b.buf, c)
+	return nil
 }
 
 func (b *fastBuilder) WriteString(s string) {

@@ -40,7 +40,7 @@ func ExampleGoLayout() {
 
 var (
 	zCST, _ = time.LoadLocation("Asia/Shanghai")
-	ttt     = time.Unix(1655689750, 0).In(zCST)
+	ttt     = time.Unix(1655689750, 181999999).In(zCST)
 	tts     = []struct {
 		layout   string
 		goLayout string
@@ -89,12 +89,12 @@ var (
 		{
 			layout:   `yyyy-MM-dd'T'HH:mm:ss.SSSZ`,
 			goLayout: `2006-01-02T15:04:05.000-0700`,
-			formated: `2022-06-20T09:49:10.000+0800`,
+			formated: `2022-06-20T09:49:10.181+0800`,
 		},
 		{
 			layout:   `yyyy-MM-dd'T'HH:mm:ss.SSSXXX`,
 			goLayout: `2006-01-02T15:04:05.000Z07:00`,
-			formated: `2022-06-20T09:49:10.000+08:00`,
+			formated: `2022-06-20T09:49:10.181+08:00`,
 		},
 		{
 			layout:   `YYYY-'M'MM-u`,
