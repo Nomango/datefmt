@@ -94,6 +94,7 @@ func goLayout(generalLayout string) string {
 
 var (
 	tokens = map[byte]bool{
+		'G': true,
 		'y': true,
 		'Y': true,
 		'M': true,

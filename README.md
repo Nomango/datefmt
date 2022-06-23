@@ -7,7 +7,7 @@
 [![Codacy Badge](https://app.codacy.com/project/badge/Coverage/9dd32aab87364903a57f32543f3bf738)](https://www.codacy.com/gh/Nomango/datefmt/dashboard?utm_source=github.com&utm_medium=referral&utm_content=Nomango/datefmt&utm_campaign=Badge_Coverage)
 [![License](https://img.shields.io/github/license/nomango/datefmt)](https://github.com/Nomango/datefmt/blob/main/LICENSE)
 
-A date format tool based on general layout for Golang.
+A **FASTER** date format tool based on **`yyyyMMdd`** layout for Golang.
 
 It is designed to solve this problem [Golang/go issue: magic number datetime formatting](https://github.com/golang/go/issues/38871).
 
@@ -27,42 +27,57 @@ t, err := datefmt.ParseInLocation("yyyy-MM-dd HH:mm:ss", "2022-06-20 09:49:10", 
 l := datefmt.GoLayout("yyyy-MM-dd HH:mm:ss") // l = '2006-01-02 15:04:05'
 ```
 
-The format of the layout is similar to the time pattern definition in Java.
+## Pattern
+
+The format of the layout is similar to the time and date pattern defined in Java.
 
 Support for the standard is as follows:
 
-```golang
-placeholders = map[string]string{
-    "YYYY": "2006",
-    "yyyy": "2006",
-    "YY":   "06",
-    "yy":   "06",
-    "MMMM": "January",
-    "MMM":  "Jan",
-    "MM":   "01",
-    "M":    "1",
-    "DDD":  "002",
-    "dd":   "02",
-    "d":    "2",
+| pattern | example   | format (fast, default) | format (std) | parse (std) |
+| :---    | :---      |:-:|:-:|:-:|
+| G       | AD        | ✓ |   |   |
+| YYYY    | 2006      | ✓ | [^1] | [^1] |
+| yyyy    | 2006      | ✓ | ✓ | ✓ |
+| YY      | 06        | ✓ | [^1] | [^1] |
+| yy      | 06        | ✓ | ✓ | ✓ |
+| MMMM    | February  | ✓ | ✓ | ✓ |
+| MMM     | Feb       | ✓ | ✓ | ✓ |
+| MM      | 02        | ✓ | ✓ | ✓ |
+| M       | 2         | ✓ | ✓ | ✓ |
+| FF      | 07        | ✓ |   |   |
+| F       | 7         | ✓ |   |   |
+| WW      | 07        | ✓ |   |   |
+| W       | 7         | ✓ |   |   |
+| ww      | 07        | ✓ |   |   |
+| w       | 7         | ✓ |   |   |
+| DDD     | 032       | ✓ | ✓ | ✓ |
+| D       | 32        | ✓ |   |   |
+| dd      | 01        | ✓ | ✓ | ✓ |
+| d       | 1         | ✓ | ✓ | ✓ |
+| EEEE    | Wednesday | ✓ | ✓ | ✓ |
+| EEE     | Web       | ✓ | ✓ | ✓ |
+| u       | 3         | ✓ |   |   |
+| HH      | 15        | ✓ | ✓ | ✓ |
+| hh      | 03        | ✓ | ✓ | ✓ |
+| H       | 15        | ✓ |   |   |
+| h       | 3         | ✓ | ✓ | ✓ |
+| KK      | 11        | ✓ |   |   |
+| K       | 11        | ✓ |   |   |
+| kk      | 24        | ✓ |   |   |
+| k       | 24        | ✓ |   |   |
+| mm      | 04        | ✓ | ✓ | ✓ |
+| m       | 4         | ✓ | ✓ | ✓ |
+| ss      | 05        | ✓ | ✓ | ✓ |
+| s       | 5         | ✓ | ✓ | ✓ |
+| SSS     | 978       | ✓ | ✓ | ✓ |
+| a       | PM        | ✓ | ✓ | ✓ |
+| z       | MST       | ✓ | ✓ | ✓ |
+| Z       | -0700     | ✓ | ✓ | ✓ |
+| X       | Z07       | ✓ | ✓ | ✓ |
+| XX      | Z0700     | ✓ | ✓ | ✓ |
+| XXX     | Z07:00    | ✓ | ✓ | ✓ |
+| '       | 'o''clock'| ✓ | [^2] | [^2] |
 
-    "EEEE": "Monday",
-    "EEE":  "Mon",
-
-    "HH":  "15",
-    "hh":  "03",
-    "h":   "3",
-    "mm":  "04",
-    "m":   "4",
-    "ss":  "05",
-    "s":   "5",
-    "SSS": "000",
-
-    "a": "PM",
-
-    "z":   "MST",
-    "Z":   "-0700",
-    "X":   "Z07",
-    "XX":  "Z0700",
-    "XXX": "Z07:00",
-}
-```
+> **Note**  
+> [^1]: Not week year  
+> [^2]: Only support text delimiter in layout convertion  

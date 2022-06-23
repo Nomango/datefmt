@@ -120,8 +120,8 @@ var (
 		{
 			t:        testingTime,
 			layout:   `YYYY-'M'MM-u`,
-			goLayout: `2006-M01-u`,
-			formated: `2022-M06-u`,
+			formated: `2022-M06-2`,
+			onlyFast: true,
 		},
 		{
 			t:        time.Unix(1642740550, 0).In(zCST),
@@ -166,8 +166,59 @@ var (
 			goLayout: `''`,
 			formated: `''`,
 		},
+		{
+			t:        time.Date(2022, time.July, 3, 12, 0, 0, 0, time.UTC),
+			layout:   `G F FF W WW w ww u k kk K KK`,
+			formated: `AD 1 01 1 01 26 26 7 12 12 0 00`,
+			onlyFast: true,
+		},
+		{
+			t:        time.Date(2022, time.July, 4, 0, 0, 0, 0, time.UTC),
+			layout:   `G F FF W WW w ww u k kk K KK`,
+			formated: `AD 1 01 2 02 27 27 1 24 24 0 00`,
+			onlyFast: true,
+		},
+		{
+			t:        time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC),
+			layout:   `ww WW FF`,
+			formated: `52 01 01`,
+			onlyFast: true,
+		},
+		{
+			t:        time.Date(2022, time.January, 3, 0, 0, 0, 0, time.UTC),
+			layout:   `ww WW FF`,
+			formated: `01 02 01`,
+			onlyFast: true,
+		},
+		{
+			t:        time.Date(2024, time.December, 30, 0, 0, 0, 0, time.UTC),
+			layout:   `ww WW FF`,
+			formated: `01 06 05`,
+			onlyFast: true,
+		},
+		{
+			t:        time.Date(-1, time.January, 1, 0, 0, 0, 0, time.UTC),
+			layout:   `G`,
+			formated: `BC`,
+			onlyFast: true,
+		},
 	}
 )
+
+func TestTest(t *testing.T) {
+	for i := 1; i < 40; i++ {
+		t := time.Date(2024, time.December, i, 0, 1, 0, 0, time.UTC)
+		fmt.Println(datefmt.Format(t, "YYYY yyyy-MM-dd kk:mm:ss DDD ww WW FF EEEE z Z"))
+	}
+	// for i := 1; i < 40; i++ {
+	// 	t := time.Date(2022, time.January, i, 0, 1, 0, 0, time.UTC)
+	// 	fmt.Println(datefmt.Format(t, "YYYY yyyy-MM-dd kk:mm:ss DDD ww WW FF EEEE z Z"))
+	// }
+	// for i := 1; i < 40; i++ {
+	// 	t := time.Date(2022, time.July, i, 0, 1, 0, 0, time.UTC)
+	// 	fmt.Println(datefmt.Format(t, "YYYY yyyy-MM-dd kk:mm:ss DDD ww WW FF EEEE z Z"))
+	// }
+}
 
 func TestGoLayout(t *testing.T) {
 	for _, tt := range tts {
