@@ -6,18 +6,9 @@ import (
 	"time"
 )
 
-var (
-	defaultFormatter = FastFormat
-)
-
-// Use replaces the default formatter
-func Use(formatter func(t time.Time, generalLayout string) string) {
-	defaultFormatter = formatter
-}
-
 // Format is a general layout based version of time.Format
 func Format(t time.Time, generalLayout string) string {
-	return defaultFormatter(t, generalLayout)
+	return fastFormat(t, generalLayout)
 }
 
 // Parse is a general layout based version of time.Parse

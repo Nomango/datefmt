@@ -7,15 +7,9 @@ import (
 	"unsafe"
 )
 
-// FastFormat is a faster and general layout based version of time.Format
-func FastFormat(t time.Time, generalLayout string) string {
+func fastFormat(t time.Time, generalLayout string) string {
 	l := FastLayout(generalLayout)
 	return l.Format(t)
-}
-
-// Format is a general layout based version of time.Format
-func StdFormat(t time.Time, generalLayout string) string {
-	return t.Format(GoLayout(generalLayout))
 }
 
 type Layout struct {

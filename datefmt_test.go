@@ -39,8 +39,8 @@ func ExampleGoLayout() {
 }
 
 var (
-	zCST, _     = time.LoadLocation("Asia/Shanghai")
-	testingTime = time.Unix(1655776150, 0).In(zCST)
+	zoneCST, _  = time.LoadLocation("Asia/Shanghai")
+	testingTime = time.Unix(1655776150, 0).In(zoneCST)
 	tts         = []struct {
 		t        time.Time
 		layout   string
@@ -98,20 +98,20 @@ var (
 			formated: `220621094910+0800`,
 		},
 		{
-			t:        time.Unix(1655776150, 181999999).In(zCST),
+			t:        time.Unix(1655776150, 181999999).In(zoneCST),
 			layout:   `yyyy-MM-dd'T'HH:mm:ss.SSSZ`,
 			goLayout: `2006-01-02T15:04:05.000-0700`,
 			formated: `2022-06-21T09:49:10.181+0800`,
 		},
 		{
-			t:        time.Unix(1655776150, 181999999).In(zCST),
+			t:        time.Unix(1655776150, 181999999).In(zoneCST),
 			layout:   `YY-M-dd'T'HH:m:s.SSSXXX EEEE`,
 			goLayout: `06-1-02T15:4:5.000Z07:00 Monday`,
 			formated: `22-6-21T09:49:10.181+08:00 Tuesday`,
 			onlyStd:  true,
 		},
 		{
-			t:      time.Unix(1655776150, 181999999).In(zCST),
+			t:      time.Unix(1655776150, 181999999).In(zoneCST),
 			layout: `YY-M-dd'T'H:m:s.SSSXXX EEEE`,
 			// goLayout: `06-1-02T15:4:5.000Z07:00 Monday`,
 			formated: `22-6-21T9:49:10.181+08:00 Tuesday`,
@@ -124,13 +124,13 @@ var (
 			onlyFast: true,
 		},
 		{
-			t:        time.Unix(1642740550, 0).In(zCST),
+			t:        time.Unix(1642740550, 0).In(zoneCST),
 			layout:   `DDD hh a X`,
 			goLayout: `002 03 PM Z07`,
 			formated: `021 12 PM +08`,
 		},
 		{
-			t:      time.Unix(1642740550, 0).In(zCST),
+			t:      time.Unix(1642740550, 0).In(zoneCST),
 			layout: `D`,
 			// goLayout: `002 03 PM Z07`,
 			formated: `21`,
@@ -269,22 +269,6 @@ func TestParse(t *testing.T) {
 		}
 		if !r1.Equal(r2) {
 			t.Errorf("Parse(%s, %s) = %v; want %v", tt.layout, tt.formated, r1, r2)
-		}
-	}
-}
-
-func TestUse(t *testing.T) {
-	datefmt.Use(datefmt.StdFormat)
-	t.Cleanup(func() {
-		datefmt.Use(datefmt.FastFormat)
-	})
-	for _, tt := range tts {
-		if tt.onlyFast {
-			continue
-		}
-		r := datefmt.Format(tt.t, tt.layout)
-		if r != tt.formated {
-			t.Errorf("Format(%d, %s) = %s; want %s", tt.t.Unix(), tt.layout, r, tt.formated)
 		}
 	}
 }

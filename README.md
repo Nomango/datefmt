@@ -33,7 +33,7 @@ The format of the layout is similar to the [time and date pattern defined in Jav
 
 Support for the standard is as follows:
 
-| pattern| description              | example            | format (fast, default) | format (std) | parse (std) |
+| letter | description              | example            | format (fast, default) | format (std) | parse (std) |
 | :---   | :---                     | :---               |:-:|:-:|:-:|
 | G      | Era designator           | AD                 | ✓ |   |   |
 | y      | Year                     | 1996; 96           | ✓ | ✓[^1] | ✓[^1] |
@@ -63,3 +63,43 @@ Support for the standard is as follows:
 > [^1]: Only support common placeholders in std format & parse, eg, `yyyy` and `yy` is valid, but `yyy` is not. Such as the others.  
 > [^2]: 'Y' treated as 'y' in std format & parse.  
 > [^3]: Only support text delimiter in layout convertion.  
+
+## Performance
+
+`datefmt` performs quite well and in most cases has better performance than the standard library.
+
+Here is the benchmark results for common cases.
+
+```plain
+BenchmarkCompareFormat/datefmt______yyyy-MM-dd_HH:mm:ss-8           7447152        161.7 ns/op       24 B/op        1 allocs/op
+BenchmarkCompareFormat/std.Format___yyyy-MM-dd_HH:mm:ss-8           6057490        214.9 ns/op       24 B/op        1 allocs/op
+BenchmarkCompareFormat/jodaTime_____yyyy-MM-dd_HH:mm:ss-8           1455223        817.3 ns/op      208 B/op       18 allocs/op
+BenchmarkCompareFormat/GoDateFormat_yyyy-MM-dd_HH:mm:ss-8           1495375        810.4 ns/op      168 B/op        7 allocs/op
+
+BenchmarkCompareFormat/datefmt______yyyy-MM-dd'T'HH:mm:ss_z-8       5913645        203.9 ns/op       32 B/op        1 allocs/op
+BenchmarkCompareFormat/std.Format___yyyy-MM-dd'T'HH:mm:ss_z-8       5850758        217.3 ns/op       24 B/op        1 allocs/op
+BenchmarkCompareFormat/jodaTime_____yyyy-MM-dd'T'HH:mm:ss_z-8       1214950        999.5 ns/op      256 B/op       22 allocs/op
+BenchmarkCompareFormat/GoDateFormat_yyyy-MM-dd'T'HH:mm:ss_z-8       1296421        903.4 ns/op      208 B/op        8 allocs/op
+
+BenchmarkCompareFormat/datefmt______yyMMddHHmmssZ-8                 6011174        179.6 ns/op       24 B/op        1 allocs/op
+BenchmarkCompareFormat/std.Format___yyMMddHHmmssZ-8                 6345073        192.5 ns/op       24 B/op        1 allocs/op
+BenchmarkCompareFormat/jodaTime_____yyMMddHHmmssZ-8                 1683231        710.1 ns/op      136 B/op       12 allocs/op
+BenchmarkCompareFormat/GoDateFormat_yyMMddHHmmssZ-8                 1394109        869.9 ns/op      128 B/op        8 allocs/op
+
+BenchmarkCompareFormat/datefmt______EEE,_MMM_DDD,_''yy-8            6854894        174.7 ns/op       24 B/op        1 allocs/op
+BenchmarkCompareFormat/std.Format___EEE,_MMM_DDD,_''yy-8            8224816        160.3 ns/op       24 B/op        1 allocs/op
+BenchmarkCompareFormat/jodaTime_____EEE,_MMM_DDD,_''yy-8            2169121        545.2 ns/op      112 B/op       14 allocs/op
+BenchmarkCompareFormat/GoDateFormat_EEE,_MMM_DDD,_''yy-8            2567779        468.8 ns/op       72 B/op        3 allocs/op
+
+BenchmarkCompareFormat/datefmt______h:mm_a-8                       13415570        86.86 ns/op        8 B/op        1 allocs/op
+BenchmarkCompareFormat/std.Format___h:mm_a-8                       10746708        112.0 ns/op        8 B/op        1 allocs/op
+BenchmarkCompareFormat/jodaTime_____h:mm_a-8                        4197170        289.3 ns/op       32 B/op        6 allocs/op
+BenchmarkCompareFormat/GoDateFormat_h:mm_a-8                        3587061        340.9 ns/op       16 B/op        2 allocs/op
+
+PASS
+ok   bench 34.733s
+```
+
+> **Note**  
+> jodaTime: [github.com/vjeantet/jodaTime](github.com/vjeantet/jodaTime)  
+> GoDateFormat: [github.com/vigneshuvi/GoDateFormat](github.com/vigneshuvi/GoDateFormat)  
