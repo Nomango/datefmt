@@ -59,7 +59,6 @@ Support for the standard is as follows:
 | X      | Time zone                | -08; -0800; -08:00 | ✓ | ✓ | ✓ |
 | '      | Text delimiter           | 'o''clock'         | ✓ | ✓[^3] | ✓[^3] |
 
-> **Note**  
 > [^1]: Only support common placeholders in std format & parse, eg, `yyyy` and `yy` is valid, but `yyy` is not. Such as the others.  
 > [^2]: 'Y' treated as 'y' in std format & parse.  
 > [^3]: Only support text delimiter in layout convertion.  
@@ -68,7 +67,7 @@ Support for the standard is as follows:
 
 `datefmt` performs quite well and in most cases has better performance than the standard library.
 
-Here is the benchmark results for common cases.
+Here is the benchmark results for common formatting compared with std, [jodaTime](github.com/vjeantet/jodaTime) and [GoDateFormat](github.com/vigneshuvi/GoDateFormat).
 
 ```plain
 BenchmarkCompareFormat/datefmt______yyyy-MM-dd_HH:mm:ss-8           7447152        161.7 ns/op       24 B/op        1 allocs/op
@@ -99,7 +98,3 @@ BenchmarkCompareFormat/GoDateFormat_h:mm_a-8                        3587061     
 PASS
 ok   bench 34.733s
 ```
-
-> **Note**  
-> jodaTime: [github.com/vjeantet/jodaTime](github.com/vjeantet/jodaTime)  
-> GoDateFormat: [github.com/vigneshuvi/GoDateFormat](github.com/vigneshuvi/GoDateFormat)  
