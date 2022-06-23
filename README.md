@@ -7,7 +7,7 @@
 [![Codacy Badge](https://app.codacy.com/project/badge/Coverage/9dd32aab87364903a57f32543f3bf738)](https://www.codacy.com/gh/Nomango/datefmt/dashboard?utm_source=github.com&utm_medium=referral&utm_content=Nomango/datefmt&utm_campaign=Badge_Coverage)
 [![License](https://img.shields.io/github/license/nomango/datefmt)](https://github.com/Nomango/datefmt/blob/main/LICENSE)
 
-A **FASTER** date format tool based on **`yyyyMMdd`** layout for Golang.
+A **faster** date format tool based on **`yyyyMMdd`** layout for Golang.
 
 It is designed to solve this problem [Golang/go issue: magic number datetime formatting](https://github.com/golang/go/issues/38871).
 
@@ -29,55 +29,37 @@ l := datefmt.GoLayout("yyyy-MM-dd HH:mm:ss") // l = '2006-01-02 15:04:05'
 
 ## Pattern
 
-The format of the layout is similar to the time and date pattern defined in Java.
+The format of the layout is similar to the [time and date pattern defined in Java](https://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html).
 
 Support for the standard is as follows:
 
-| pattern | example   | format (fast, default) | format (std) | parse (std) |
-| :---    | :---      |:-:|:-:|:-:|
-| G       | AD        | ✓ |   |   |
-| YYYY    | 2006      | ✓ | [^1] | [^1] |
-| yyyy    | 2006      | ✓ | ✓ | ✓ |
-| YY      | 06        | ✓ | [^1] | [^1] |
-| yy      | 06        | ✓ | ✓ | ✓ |
-| MMMM    | February  | ✓ | ✓ | ✓ |
-| MMM     | Feb       | ✓ | ✓ | ✓ |
-| MM      | 02        | ✓ | ✓ | ✓ |
-| M       | 2         | ✓ | ✓ | ✓ |
-| FF      | 07        | ✓ |   |   |
-| F       | 7         | ✓ |   |   |
-| WW      | 07        | ✓ |   |   |
-| W       | 7         | ✓ |   |   |
-| ww      | 07        | ✓ |   |   |
-| w       | 7         | ✓ |   |   |
-| DDD     | 032       | ✓ | ✓ | ✓ |
-| D       | 32        | ✓ |   |   |
-| dd      | 01        | ✓ | ✓ | ✓ |
-| d       | 1         | ✓ | ✓ | ✓ |
-| EEEE    | Wednesday | ✓ | ✓ | ✓ |
-| EEE     | Web       | ✓ | ✓ | ✓ |
-| u       | 3         | ✓ |   |   |
-| HH      | 15        | ✓ | ✓ | ✓ |
-| hh      | 03        | ✓ | ✓ | ✓ |
-| H       | 15        | ✓ |   |   |
-| h       | 3         | ✓ | ✓ | ✓ |
-| KK      | 11        | ✓ |   |   |
-| K       | 11        | ✓ |   |   |
-| kk      | 24        | ✓ |   |   |
-| k       | 24        | ✓ |   |   |
-| mm      | 04        | ✓ | ✓ | ✓ |
-| m       | 4         | ✓ | ✓ | ✓ |
-| ss      | 05        | ✓ | ✓ | ✓ |
-| s       | 5         | ✓ | ✓ | ✓ |
-| SSS     | 978       | ✓ | ✓ | ✓ |
-| a       | PM        | ✓ | ✓ | ✓ |
-| z       | MST       | ✓ | ✓ | ✓ |
-| Z       | -0700     | ✓ | ✓ | ✓ |
-| X       | Z07       | ✓ | ✓ | ✓ |
-| XX      | Z0700     | ✓ | ✓ | ✓ |
-| XXX     | Z07:00    | ✓ | ✓ | ✓ |
-| '       | 'o''clock'| ✓ | [^2] | [^2] |
+| pattern| description              | example            | format (fast, default) | format (std) | parse (std) |
+| :---   | :---                     | :---               |:-:|:-:|:-:|
+| G      | Era designator           | AD                 | ✓ |   |   |
+| y      | Year                     | 1996; 96           | ✓ | ✓[^1] | ✓[^1] |
+| Y      | Week year                | 2009; 09           | ✓ | ✓[^2] | ✓[^2] |
+| M      | Month in year            | July; Jul; 07      | ✓ | ✓ | ✓ |
+| w      | Week in year             | 27                 | ✓ |   |   |
+| W      | Week in month            | 2                  | ✓ |   |   |
+| D      | Day in year              | 189                | ✓ | ✓ | ✓ |
+| d      | Day in month             | 10                 | ✓ | ✓ | ✓ |
+| F      | Day of week in month     | 2                  | ✓ |   |   |
+| E      | Day name in week         | Tuesday; Tue       | ✓ | ✓ | ✓ |
+| u      | Day number of week (1-7) | 1                  | ✓ |   |   |
+| a      | Am/pm marker             | PM                 | ✓ | ✓ | ✓ |
+| H      | Hour in day (0-23)       | 0                  | ✓ | ✓ | ✓ |
+| k      | Hour in day (1-24)       | 24                 | ✓ |   |   |
+| K      | Hour in am/pm (0-11)     | 0                  | ✓ |   |   |
+| h      | Hour in am/pm (1-12)     | 12                 | ✓ | ✓ | ✓ |
+| m      | Minute in hour           | 30                 | ✓ | ✓ | ✓ |
+| s      | Second in minute         | 55                 | ✓ | ✓ | ✓ |
+| S      | Millisecond              | 978                | ✓ | ✓ | ✓ |
+| z      | Time zone                | PST; GMT-08:00     | ✓ | ✓ | ✓ |
+| Z      | Time zone                | -800               | ✓ | ✓ | ✓ |
+| X      | Time zone                | -08; -0800; -08:00 | ✓ | ✓ | ✓ |
+| '      | Text delimiter           | 'o''clock'         | ✓ | ✓[^3] | ✓[^3] |
 
 > **Note**  
-> [^1]: Not week year  
-> [^2]: Only support text delimiter in layout convertion  
+> [^1]: Only support common placeholders in std format & parse, eg, `yyyy` and `yy` is valid, but `yyy` is not. Such as the others.  
+> [^2]: 'Y' treated as 'y' in std format & parse.  
+> [^3]: Only support text delimiter in layout convertion.  

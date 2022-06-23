@@ -51,7 +51,7 @@ func goLayout(generalLayout string) string {
 	)
 	sb.Grow(max)
 	for i := 0; i < n; i++ {
-		if !tokens[l[i]] {
+		if !goLayoutTokens[l[i]] && l[i] != '\'' {
 			sb.WriteByte(l[i])
 			continue
 		}
@@ -93,22 +93,15 @@ func goLayout(generalLayout string) string {
 }
 
 var (
-	tokens = map[byte]bool{
-		'G': true,
+	goLayoutTokens = map[byte]bool{
 		'y': true,
 		'Y': true,
 		'M': true,
-		// 'w': true,
-		// 'W': true,
 		'D': true,
 		'd': true,
-		// 'F': true,
 		'E': true,
-		// 'u': true,
 		'a': true,
 		'H': true,
-		// 'k': true,
-		// 'K': true,
 		'h': true,
 		'm': true,
 		's': true,
@@ -116,11 +109,9 @@ var (
 		'z': true,
 		'Z': true,
 		'X': true,
-
-		'\'': true,
 	}
 
-	placeholders = map[string]string{
+	goLayoutPlaceholders = map[string]string{
 		"YYYY": "2006",
 		"yyyy": "2006",
 		"YY":   "06",
@@ -160,8 +151,11 @@ func getPlaceholder(ph []byte) string {
 	if len(tmp) > 4 {
 		tmp = tmp[:4]
 	}
-	if goPh, ok := placeholders[string(tmp)]; ok {
-		return goPh
+	for len(tmp) > 0 {
+		if goPh, ok := goLayoutPlaceholders[string(tmp)]; ok {
+			return goPh
+		}
+		tmp = tmp[1:]
 	}
 	return string(ph) // Do not modify
 }

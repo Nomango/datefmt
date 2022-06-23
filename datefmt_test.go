@@ -81,9 +81,9 @@ var (
 		},
 		{
 			t:        testingTime,
-			layout:   `yyyyy.MMMMM.dd hh:mm aaa`,
-			goLayout: `2006.January.02 03:04 aaa`,
-			formated: `2022.June.21 09:49 aaa`,
+			layout:   `yyyy.MMMMM.dd hh:mm aaa`,
+			goLayout: `2006.January.02 03:04 PM`,
+			formated: `2022.June.21 09:49 AM`,
 		},
 		{
 			t:        testingTime,
@@ -202,23 +202,15 @@ var (
 			formated: `BC`,
 			onlyFast: true,
 		},
+		{
+			t:        time.Date(2022, time.January, 0, 0, 0, 0, 0, time.UTC),
+			layout:   `S`,
+			goLayout: `S`,
+			formated: `S`,
+			onlyStd:  true,
+		},
 	}
 )
-
-func TestTest(t *testing.T) {
-	for i := 1; i < 40; i++ {
-		t := time.Date(2024, time.December, i, 0, 1, 0, 0, time.UTC)
-		fmt.Println(datefmt.Format(t, "YYYY yyyy-MM-dd kk:mm:ss DDD ww WW FF EEEE z Z"))
-	}
-	// for i := 1; i < 40; i++ {
-	// 	t := time.Date(2022, time.January, i, 0, 1, 0, 0, time.UTC)
-	// 	fmt.Println(datefmt.Format(t, "YYYY yyyy-MM-dd kk:mm:ss DDD ww WW FF EEEE z Z"))
-	// }
-	// for i := 1; i < 40; i++ {
-	// 	t := time.Date(2022, time.July, i, 0, 1, 0, 0, time.UTC)
-	// 	fmt.Println(datefmt.Format(t, "YYYY yyyy-MM-dd kk:mm:ss DDD ww WW FF EEEE z Z"))
-	// }
-}
 
 func TestGoLayout(t *testing.T) {
 	for _, tt := range tts {
@@ -234,6 +226,9 @@ func TestGoLayout(t *testing.T) {
 
 func TestFormat(t *testing.T) {
 	for _, tt := range tts {
+		if tt.onlyStd {
+			continue
+		}
 		r := datefmt.Format(tt.t, tt.layout)
 		if r != tt.formated {
 			t.Errorf("Format(%d, %s) = %s; want %s", tt.t.Unix(), tt.layout, r, tt.formated)
@@ -244,6 +239,9 @@ func TestFormat(t *testing.T) {
 func TestFormatStable(t *testing.T) {
 	for _, tt := range tts {
 		tt := tt
+		if tt.onlyStd {
+			continue
+		}
 		t.Run(tt.layout, func(t *testing.T) {
 			t.Parallel()
 			for i := 0; i < 5; i++ {

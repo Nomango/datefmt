@@ -49,52 +49,50 @@ func (l *Layout) Format(t time.Time) string {
 		zoneName, zoneOffset = t.Zone()
 	}
 	for _, arg := range l.args {
-		switch arg.flag {
+		switch arg.ph.flag {
 		case formatFlagNone:
-			p = arg.appendInt(p, 0)
+			p = arg.ph.format(p, 0, arg.w)
 		case formatFlagYear:
-			p = arg.appendInt(p, year)
+			p = arg.ph.format(p, year, arg.w)
 		case formatFlagMonth:
-			p = arg.appendInt(p, int(month))
+			p = arg.ph.format(p, int(month), arg.w)
 		case formatFlagDay:
-			p = arg.appendInt(p, day)
+			p = arg.ph.format(p, day, arg.w)
 		case formatFlagHour:
-			p = arg.appendInt(p, hour)
+			p = arg.ph.format(p, hour, arg.w)
 		case formatFlagMinute:
-			p = arg.appendInt(p, minute)
+			p = arg.ph.format(p, minute, arg.w)
 		case formatFlagSecond:
-			p = arg.appendInt(p, second)
+			p = arg.ph.format(p, second, arg.w)
 		case formatFlagWeekDay:
-			p = arg.appendInt(p, int(t.Weekday()))
+			p = arg.ph.format(p, int(t.Weekday()), arg.w)
 		case formatFlagNanosecond:
-			p = arg.appendInt(p, t.Nanosecond())
+			p = arg.ph.format(p, t.Nanosecond(), arg.w)
 		case formatFlagZoneName:
 			p = formatZoneName(p, zoneName, zoneOffset)
 		case formatFlagZoneOffset:
-			p = arg.appendInt(p, zoneOffset)
+			p = arg.ph.format(p, zoneOffset, arg.w)
 		case formatFlagYearDay:
-			p = arg.appendInt(p, t.YearDay())
+			p = arg.ph.format(p, t.YearDay(), arg.w)
 		case formatFlagWeekYear:
 			iosYear, _ := t.ISOWeek()
-			p = arg.appendInt(p, iosYear)
+			p = arg.ph.format(p, iosYear, arg.w)
 		case formatFlagWeekInYear:
 			_, isoWeek := t.ISOWeek()
-			p = arg.appendInt(p, isoWeek)
+			p = arg.ph.format(p, isoWeek, arg.w)
 		case formatFlagWeekInMonth:
 			firstDayOfMonth := time.Date(year, month, 1, 0, 0, 0, 0, t.Location())
 			firstWeekYear, firstWeek := firstDayOfMonth.ISOWeek()
 			isoYear, isoWeek := t.ISOWeek()
 			if firstWeekYear == isoYear {
-				p = arg.appendInt(p, isoWeek-firstWeek+1)
+				p = arg.ph.format(p, isoWeek-firstWeek+1, arg.w)
+			} else if month == time.January {
+				// Jan 01 to Jan 03 of year n might belong to week 52 or 53 of year n-1
+				p = arg.ph.format(p, isoWeek+1, arg.w)
 			} else {
-				if month == time.January {
-					// Jan 01 to Jan 03 of year n might belong to week 52 or 53 of year n-1
-					p = arg.appendInt(p, isoWeek+1)
-				} else {
-					// Dec 29 to Dec 31 might belong to week 1 of year n+1
-					_, lastWeek := time.Date(year, time.December, 28, 0, 0, 0, 0, t.Location()).ISOWeek()
-					p = arg.appendInt(p, lastWeek-firstWeek+2)
-				}
+				// Dec 29 to Dec 31 might belong to week 1 of year n+1
+				_, lastWeek := time.Date(year, time.December, 28, 0, 0, 0, 0, t.Location()).ISOWeek()
+				p = arg.ph.format(p, lastWeek-firstWeek+2, arg.w)
 			}
 		}
 	}
@@ -130,7 +128,7 @@ func newFastLayout(generalLayout string) *Layout {
 	}
 	sb.Grow(tmax)
 	for i := 0; i < n; i++ {
-		if !fastTokens[gl[i]] {
+		if _, ok := placeholders[gl[i]]; !ok && gl[i] != '\'' {
 			sb.WriteByte(gl[i])
 			continue
 		}
@@ -172,10 +170,10 @@ func newFastLayout(generalLayout string) *Layout {
 			e = i
 		}
 		// fmt.Println("ph =", string(gl[s:e+1]))
-		arg := getPlaceholderFormatArg(gl[s : e+1])
+		arg := newPlaceholderFormatArg(gl[s : e+1])
 		l.args = append(l.args, arg)
 		l.max += arg.max
-		l.flag.Add(arg.flag)
+		l.flag.Add(arg.ph.flag)
 	}
 	// flush buffer
 	if sb.Len() > 0 {
@@ -183,6 +181,35 @@ func newFastLayout(generalLayout string) *Layout {
 		flushBuffer()
 	}
 	return &l
+}
+
+type formatArg struct {
+	s   string
+	w   int
+	max int
+	ph  placeholder
+}
+
+func newBytesFormatArg(p []byte) *formatArg {
+	return &formatArg{
+		s:   readOnlyBytes2String(p),
+		w:   len(p),
+		max: len(p),
+		ph: placeholder{
+			flag:   formatFlagNone,
+			format: func(dst []byte, _, _ int) []byte { return append(dst, p...) },
+		},
+	}
+}
+
+func newPlaceholderFormatArg(p []byte) *formatArg {
+	ph := placeholders[p[0]]
+	return &formatArg{
+		s:   readOnlyBytes2String(p),
+		w:   len(p),
+		max: ph.max(len(p)),
+		ph:  *ph,
+	}
 }
 
 type formatFlag int
@@ -220,104 +247,157 @@ func (f formatFlag) Has(flag formatFlag) bool {
 	return f&flag != 0
 }
 
+type placeholder struct {
+	max    func(int) int
+	flag   formatFlag
+	format func(p []byte, v, w int) []byte
+}
+
 var (
-	fastTokens = map[byte]bool{
-		'G': true,
-		'y': true,
-		'Y': true,
-		'M': true,
-		'w': true,
-		'W': true,
-		'D': true,
-		'd': true,
-		'F': true,
-		'E': true,
-		'u': true,
-		'a': true,
-		'H': true,
-		'k': true,
-		'K': true,
-		'h': true,
-		'm': true,
-		's': true,
-		'S': true,
-		'z': true,
-		'Z': true,
-		'X': true,
-
-		'\'': true,
-	}
-
-	formatArgs = map[string]*formatArg{
-		"G":    {max: 2, flag: formatFlagYear, appendInt: formatEra},
-		"YYYY": {max: 4, flag: formatFlagWeekYear, appendInt: func(p []byte, v int) []byte { return formatYear(p, v) }},
-		"yyyy": {max: 4, flag: formatFlagYear, appendInt: func(p []byte, v int) []byte { return formatYear(p, v) }},
-		"YY":   {max: 2, flag: formatFlagWeekYear, appendInt: func(p []byte, v int) []byte { return formatZero2(p, v%100) }},
-		"yy":   {max: 2, flag: formatFlagYear, appendInt: func(p []byte, v int) []byte { return formatZero2(p, v%100) }},
-		"MMMM": {max: 9, flag: formatFlagMonth, appendInt: func(p []byte, v int) []byte { return formatString(p, time.Month(v).String()) }},
-		"MMM":  {max: 3, flag: formatFlagMonth, appendInt: func(p []byte, v int) []byte { return formatString(p, time.Month(v).String()[:3]) }},
-		"MM":   {max: 2, flag: formatFlagMonth, appendInt: func(p []byte, v int) []byte { return formatZero2(p, v) }},
-		"M":    {max: 2, flag: formatFlagMonth, appendInt: func(p []byte, v int) []byte { return formatMax99(p, v) }},
-		"FF":   {max: 2, flag: formatFlagDay, appendInt: func(p []byte, v int) []byte { return formatZero2(p, dayOfWeekInMonth(v)) }},
-		"F":    {max: 1, flag: formatFlagDay, appendInt: func(p []byte, v int) []byte { return formatMax99(p, dayOfWeekInMonth(v)) }},
-		"WW":   {max: 2, flag: formatFlagWeekInMonth, appendInt: func(p []byte, v int) []byte { return formatZero2(p, v) }},
-		"W":    {max: 1, flag: formatFlagWeekInMonth, appendInt: func(p []byte, v int) []byte { return formatMax99(p, v) }},
-		"ww":   {max: 2, flag: formatFlagWeekInYear, appendInt: func(p []byte, v int) []byte { return formatZero2(p, v) }},
-		"w":    {max: 2, flag: formatFlagWeekInYear, appendInt: func(p []byte, v int) []byte { return formatMax99(p, v) }},
-		"DDD":  {max: 3, flag: formatFlagYearDay, appendInt: func(p []byte, v int) []byte { return formatZero3(p, v) }},
-		"D":    {max: 3, flag: formatFlagYearDay, appendInt: func(p []byte, v int) []byte { return formatMax999(p, v) }},
-		"dd":   {max: 2, flag: formatFlagDay, appendInt: func(p []byte, v int) []byte { return formatZero2(p, v) }},
-		"d":    {max: 2, flag: formatFlagDay, appendInt: func(p []byte, v int) []byte { return formatMax99(p, v) }},
-		"EEEE": {max: 9, flag: formatFlagWeekDay, appendInt: func(p []byte, v int) []byte { return formatString(p, time.Weekday(v).String()) }},
-		"EEE":  {max: 3, flag: formatFlagWeekDay, appendInt: func(p []byte, v int) []byte { return formatString(p, time.Weekday(v).String()[:3]) }},
-		"u":    {max: 1, flag: formatFlagWeekDay, appendInt: func(p []byte, v int) []byte { return formatMax9(p, dayNumOfWeek(v)) }},
-		"HH":   {max: 2, flag: formatFlagHour, appendInt: func(p []byte, v int) []byte { return formatZero2(p, v) }},
-		"hh":   {max: 2, flag: formatFlagHour, appendInt: func(p []byte, v int) []byte { return formatZero2(p, hour12(v)) }},
-		"H":    {max: 2, flag: formatFlagHour, appendInt: func(p []byte, v int) []byte { return formatMax99(p, v) }},
-		"h":    {max: 2, flag: formatFlagHour, appendInt: func(p []byte, v int) []byte { return formatMax99(p, hour12(v)) }},
-		"KK":   {max: 2, flag: formatFlagHour, appendInt: func(p []byte, v int) []byte { return formatZero2(p, v%12) }},
-		"K":    {max: 2, flag: formatFlagHour, appendInt: func(p []byte, v int) []byte { return formatMax99(p, v%12) }},
-		"kk":   {max: 2, flag: formatFlagHour, appendInt: func(p []byte, v int) []byte { return formatZero2(p, hour24(v)) }},
-		"k":    {max: 2, flag: formatFlagHour, appendInt: func(p []byte, v int) []byte { return formatMax99(p, hour24(v)) }},
-		"mm":   {max: 2, flag: formatFlagMinute, appendInt: func(p []byte, v int) []byte { return formatZero2(p, v) }},
-		"m":    {max: 2, flag: formatFlagMinute, appendInt: func(p []byte, v int) []byte { return formatMax99(p, v) }},
-		"ss":   {max: 2, flag: formatFlagSecond, appendInt: func(p []byte, v int) []byte { return formatZero2(p, v) }},
-		"s":    {max: 2, flag: formatFlagSecond, appendInt: func(p []byte, v int) []byte { return formatMax99(p, v) }},
-		"SSS":  {max: 3, flag: formatFlagNanosecond, appendInt: func(p []byte, v int) []byte { return formatZero3(p, v/1000000) }},
-		"a":    {max: 2, flag: formatFlagHour, appendInt: formatPM},
-		"z":    {max: 5, flag: formatFlagZoneName},
-		"Z":    {max: 5, flag: formatFlagZoneOffset, appendInt: formatZoneOffsetRFC822},
-		"X":    {max: 3, flag: formatFlagZoneOffset, appendInt: formatZoneOffsetISO8601(1)},
-		"XX":   {max: 5, flag: formatFlagZoneOffset, appendInt: formatZoneOffsetISO8601(2)},
-		"XXX":  {max: 6, flag: formatFlagZoneOffset, appendInt: formatZoneOffsetISO8601(3)},
+	placeholders = map[byte]*placeholder{
+		'G': {max: fixedMax(2), flag: formatFlagYear, format: formatEra},
+		'y': {max: yearMax, flag: formatFlagYear, format: formatYear},
+		'Y': {max: yearMax, flag: formatFlagWeekYear, format: formatYear},
+		'M': {max: monthMax, flag: formatFlagMonth, format: formatMonth},
+		'w': {max: numberMax(2), flag: formatFlagWeekInYear, format: formatNumProbably2Digits},
+		'W': {max: numberMax(2), flag: formatFlagWeekInMonth, format: formatNumProbably2Digits},
+		'D': {max: numberMax(3), flag: formatFlagYearDay, format: formatNumProbably3Digits},
+		'd': {max: numberMax(2), flag: formatFlagDay, format: formatNumProbably2Digits},
+		'F': {max: numberMax(1), flag: formatFlagDay, format: func(p []byte, v, w int) []byte { return formatNumProbably2Digits(p, dayOfWeekInMonth(v), w) }},
+		'E': {max: textMax(3, 9), flag: formatFlagWeekDay, format: formatWeek},
+		'u': {max: numberMax(1), flag: formatFlagWeekDay, format: func(p []byte, v, w int) []byte { return formatNumProbably2Digits(p, dayNumOfWeek(v), w) }},
+		'a': {max: fixedMax(2), flag: formatFlagHour, format: formatPM},
+		'H': {max: numberMax(2), flag: formatFlagHour, format: formatNumProbably2Digits},
+		'k': {max: numberMax(2), flag: formatFlagHour, format: func(p []byte, v, w int) []byte { return formatNumProbably2Digits(p, hour24(v), w) }},
+		'K': {max: numberMax(2), flag: formatFlagHour, format: func(p []byte, v, w int) []byte { return formatNumProbably2Digits(p, v%12, w) }},
+		'h': {max: numberMax(2), flag: formatFlagHour, format: func(p []byte, v, w int) []byte { return formatNumProbably2Digits(p, hour12(v), w) }},
+		'm': {max: numberMax(2), flag: formatFlagMinute, format: formatNumProbably2Digits},
+		's': {max: numberMax(2), flag: formatFlagSecond, format: formatNumProbably2Digits},
+		'S': {max: nanosecondMax, flag: formatFlagNanosecond, format: formatNanosecond},
+		'z': {max: fixedMax(5), flag: formatFlagZoneName},
+		'Z': {max: fixedMax(5), flag: formatFlagZoneOffset, format: formatZoneOffsetRFC822},
+		'X': {max: fixedMax(6), flag: formatFlagZoneOffset, format: formatZoneOffsetISO8601},
 	}
 )
 
-type formatArg struct {
-	max  int
-	flag formatFlag
+// y Y Year
 
-	appendInt func([]byte, int) []byte
+func yearMax(w int) int {
+	if w == 2 {
+		return 2
+	}
+	return 4
 }
 
-func newBytesFormatArg(p []byte) *formatArg {
-	return &formatArg{
-		max:       len(p),
-		flag:      formatFlagNone,
-		appendInt: func(dst []byte, _ int) []byte { return append(dst, p...) },
+func formatYear(p []byte, year, w int) []byte {
+	if w == 2 {
+		return formatNumProbably2Digits(p, year%100, 2)
+	}
+	return formatNumProbably4Digits(p, year, w)
+}
+
+// M Month
+
+func monthMax(w int) int {
+	if w < 3 {
+		return 2
+	}
+	if w == 3 {
+		return 3
+	}
+	return 9
+}
+
+func formatMonth(p []byte, month, w int) []byte {
+	if w < 3 {
+		return formatNumProbably2Digits(p, month, w)
+	}
+	if w == 3 {
+		return formatString(p, time.Month(month).String()[:3])
+	}
+	return formatString(p, time.Month(month).String())
+}
+
+// E Week
+
+func formatWeek(p []byte, week, w int) []byte {
+	if w <= 3 {
+		return formatString(p, time.Weekday(week).String()[:3])
+	}
+	return formatString(p, time.Weekday(week).String())
+}
+
+// G Era
+
+func formatEra(p []byte, year, w int) []byte {
+	if year < 0 {
+		return append(p, "BC"...)
+	}
+	return append(p, "AD"...)
+}
+
+// a PM
+
+func formatPM(p []byte, v, w int) []byte {
+	if v >= 12 {
+		return append(p, "PM"...)
+	}
+	return append(p, "AM"...)
+}
+
+// S Nanosecond
+
+func nanosecondMax(w int) int {
+	return w
+}
+
+func formatNanosecond(p []byte, v, w int) []byte {
+	// truncate nanosecond number
+	div := 1000000000
+	i := w
+	for i > 0 {
+		div /= 10
+		i--
+	}
+	return formatNum(p, v/div, w)
+}
+
+// z Zone name
+
+func formatZoneName(p []byte, zoneName string, zoneOffset int) []byte {
+	if len(zoneName) > 0 {
+		return append(p, zoneName...)
+	}
+	// No time zone known for this time, but we must print one.
+	// Use the RFC822 format.
+	return formatZoneOffsetRFC822(p, zoneOffset, 0)
+}
+
+// Z Zone RFC822
+
+func formatZoneOffsetRFC822(p []byte, zoneOffset, w int) []byte {
+	sign, hour, minute := getZoneOffsetParts(zoneOffset)
+	return formatNum(formatNum(append(p, sign), hour, 2), minute, 2)
+}
+
+// X Zone ISO8601
+
+func formatZoneOffsetISO8601(p []byte, zoneOffset, w int) []byte {
+	if zoneOffset == 0 {
+		return append(p, 'Z')
+	}
+	sign, hour, minute := getZoneOffsetParts(zoneOffset)
+	switch w {
+	case 1:
+		return formatNum(append(p, sign), hour, 2)
+	case 2:
+		return formatNum(formatNum(append(p, sign), hour, 2), minute, 2)
+	default:
+		return formatNum(append(formatNum(append(p, sign), hour, 2), ':'), minute, 2)
 	}
 }
 
-func getPlaceholderFormatArg(ph []byte) *formatArg {
-	tmp := ph
-	if len(tmp) > 4 {
-		tmp = tmp[:4]
-	}
-	if arg, ok := formatArgs[string(tmp)]; ok {
-		return arg
-	}
-	return newBytesFormatArg(ph) // Do not modify
-}
+// helper functions
 
 func hour12(hour int) int {
 	hour %= 12
@@ -358,89 +438,28 @@ func getZoneOffsetParts(zoneOffset int) (sign byte, hour, minute int) {
 	return
 }
 
-func formatEra(p []byte, year int) []byte {
-	if year < 0 {
-		return formatString(p, "BC")
+func fixedMax(max int) func(int) int {
+	return func(int) int {
+		return max
 	}
-	return formatString(p, "AD")
 }
 
-func formatYear(p []byte, v int) []byte {
-	return formatMax9(formatMax9(formatMax9(formatMax9(p, v/1000), (v/100)%10), (v/10)%10), v%10)
-}
-
-func formatPM(p []byte, v int) []byte {
-	if v >= 12 {
-		return formatString(p, "PM")
-	}
-	return formatString(p, "AM")
-}
-
-func formatZoneName(p []byte, zoneName string, zoneOffset int) []byte {
-	if len(zoneName) > 0 {
-		return append(p, zoneName...)
-	}
-	// No time zone known for this time, but we must print one.
-	// Use the RFC822 format.
-	return formatZoneOffsetRFC822(p, zoneOffset)
-}
-
-func formatZoneOffsetRFC822(p []byte, zoneOffset int) []byte {
-	sign, hour, minute := getZoneOffsetParts(zoneOffset)
-	return formatZero2(formatZero2(append(p, sign), hour), minute)
-}
-
-func formatZoneOffsetISO8601(n int) func([]byte, int) []byte {
-	return func(p []byte, zoneOffset int) []byte {
-		if zoneOffset == 0 {
-			return append(p, 'Z')
+func textMax(short, long int) func(int) int {
+	return func(w int) int {
+		if w >= 4 {
+			return long
 		}
-		sign, hour, minute := getZoneOffsetParts(zoneOffset)
-		switch n {
-		case 1:
-			return formatZero2(append(p, sign), hour)
-		case 2:
-			return formatZero2(formatZero2(append(p, sign), hour), minute)
-		default:
-			return formatZero2(append(formatZero2(append(p, sign), hour), ':'), minute)
+		return short
+	}
+}
+
+func numberMax(minWidth int) func(int) int {
+	return func(w int) int {
+		if w > minWidth {
+			return w
 		}
+		return minWidth
 	}
-}
-
-func formatString(p []byte, s string) []byte {
-	return append(p, s...)
-}
-
-func formatMax9(p []byte, v int) []byte {
-	return append(p, byte('0'+v))
-}
-
-func formatMax99(p []byte, v int) []byte {
-	if v > 9 {
-		return formatMax9(formatMax9(p, v/10), v%10)
-	}
-	return formatMax9(p, v)
-}
-
-func formatMax999(p []byte, v int) []byte {
-	if v > 99 {
-		return formatMax9(formatMax9(formatMax9(p, v/100), (v/10)%10), v%10)
-	}
-	return formatMax99(p, v)
-}
-
-func formatZero2(p []byte, v int) []byte {
-	if v > 9 {
-		return formatMax99(p, v)
-	}
-	return formatMax9(formatMax9(p, 0), v)
-}
-
-func formatZero3(p []byte, v int) []byte {
-	if v > 99 {
-		return formatMax999(p, v)
-	}
-	return formatZero2(formatMax9(p, 0), v)
 }
 
 func readOnlyBytes2String(b []byte) string {
