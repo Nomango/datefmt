@@ -17,7 +17,7 @@ func ExampleFormat() {
 }
 
 func ExampleParse() {
-	t, _ := datefmt.Parse("yyyy-MM-dd HH:mm:ss z", "2022-06-20 09:49:10 CST")
+	t, _ := datefmt.Parse("yyyy-MM-dd HH:mm:ss z Z", "2022-06-20 09:49:10 CST +0800")
 	fmt.Println(t)
 	// Output:
 	// 2022-06-20 09:49:10 +0800 CST
