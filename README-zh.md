@@ -7,26 +7,26 @@
 [![Codacy Badge](https://app.codacy.com/project/badge/Coverage/9dd32aab87364903a57f32543f3bf738)](https://www.codacy.com/gh/Nomango/datefmt/dashboard?utm_source=github.com&utm_medium=referral&utm_content=Nomango/datefmt&utm_campaign=Badge_Coverage)
 [![License](https://img.shields.io/github/license/nomango/datefmt)](https://github.com/Nomango/datefmt/blob/main/LICENSE)
 
-English | [中文](README-zh.md)
+[English](README.md) | 中文
 
-A **faster** date format tool based on **`yyyyMMdd`** layout for Golang.
+为 Golang 设计的性能超棒的 **`yyyyMMdd`** 日期格式化工具。
 
-It is designed to solve this problem [Golang/go issue: magic number datetime formatting](https://github.com/golang/go/issues/38871).
+它是为了解决这个问题而创建的： [Golang/go issue: magic number datetime formatting](https://github.com/golang/go/issues/38871)。
 
-## Usage
+## 用法
 
 ```golang
-// Format time with general layout
+// 用常见语法格式化日期和时间
 s := datefmt.Format(time.Now(), "yyyy-MM-dd HH:mm:ss")
 
-// Parse time with general layout
+// 用常见语法解析时间字符串
 t, err := datefmt.Parse("yyyy-MM-dd HH:mm:ss", "2022-06-20 09:49:10")
 
-// Parse time in location with general layout
+// 用常见语法解析时间字符串，并指定时区
 t, err := datefmt.ParseInLocation("yyyy-MM-dd HH:mm:ss", "2022-06-20 09:49:10", time.UTC)
 ```
 
-Formatting with pre-created layout for better performance:
+可以预先创建格式化布局，以提升性能：
 
 ```golang
 var CommonTimeFormat = datefmt.NewLayout("yyyy-MM-dd HH:mm:ss")
@@ -34,19 +34,19 @@ var CommonTimeFormat = datefmt.NewLayout("yyyy-MM-dd HH:mm:ss")
 CommonTimeFormat.Format(time.Now())
 ```
 
-Convert general layout to go-style layout:
+将常见格式化语法转换为 Go 风格的语法：
 
 ```golang
 l := datefmt.GoLayout("yyyy-MM-dd HH:mm:ss") // l = '2006-01-02 15:04:05'
 ```
 
-## Pattern
+## 语法
 
-The format of the layout is similar to the [time and date pattern defined in Java](https://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html).
+`datefmt` 的格式化语法和 [Java 中的定义](https://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html) 一致。
 
-Support for the standard is as follows:
+对标准的支持情况如下：
 
-| letter | description              | example            | datefmt | std format | std parse |
+| 字母   | 说明                     | 示例               | datefmt | std format | std parse |
 | :---   | :---                     | :---               |:-:|:-:|:-:|
 | G      | Era designator           | AD                 | ✓ |   |   |
 | y      | Year                     | 1996; 96           | ✓ | ✓[^1] | ✓[^1] |
@@ -72,15 +72,15 @@ Support for the standard is as follows:
 | X      | Time zone                | -08; -0800; -08:00 | ✓ | ✓ | ✓ |
 | '      | Text delimiter           | 'o''clock'         | ✓ | ✓[^3] | ✓[^3] |
 
-> [^1]: Only support common placeholders in std format & parse, eg, `yyyy` and `yy` is valid, but `yyy` is not. Such as the others.  
-> [^2]: 'Y' treated as 'y' in std format & parse.  
-> [^3]: Only support text delimiter in layout convertion.  
+> [^1]: 仅支持特定字符数量的占位符，比如 `yyyy` 和 `yy` 是合法的，但 `yyy` 不是。  
+> [^2]: 在标准库支持中，'Y' 被当作 'y' 处理。  
+> [^3]: 仅在格式化语法转换时支持文本分隔符。  
 
-## Performance
+## 性能
 
-`datefmt` performs quite well and in most cases has better performance than the standard library.
+`datefmt` 的性能表现很不错，甚至在大多数情况下比标准库的速度还要快。
 
-Here is the benchmark results for common formatting compared with std, [jodaTime](github.com/vjeantet/jodaTime) and [GoDateFormat](github.com/vigneshuvi/GoDateFormat).
+下面是 `datefmt` 和标准库、[jodaTime](github.com/vjeantet/jodaTime)、[GoDateFormat](github.com/vigneshuvi/GoDateFormat) 对比下的基准测试结果：
 
 ```plain
 BenchmarkFormat/datefmt______yyyy-MM-dd_HH:mm:ss-8           7447152        161.7 ns/op       24 B/op        1 allocs/op
