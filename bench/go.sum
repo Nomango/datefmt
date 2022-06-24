@@ -1,5 +1,5 @@
-github.com/Nomango/datefmt v1.0.1-0.20220623143015-ed37ae2d61e8 h1:TDJisWJPUiqHWjp/dOAEuwC9DBvc4UImwfMmMAyTb8E=
-github.com/Nomango/datefmt v1.0.1-0.20220623143015-ed37ae2d61e8/go.mod h1:6wXiCAzMna+wuFwViqr6CvSr6KNfurLVeUOSYmzzsmc=
+github.com/Nomango/datefmt v1.1.2 h1:Ca2sz9wqQ4cdVyBsrcg9d2ct+IlrhCFSadiRHuj2VIY=
+github.com/Nomango/datefmt v1.1.2/go.mod h1:6wXiCAzMna+wuFwViqr6CvSr6KNfurLVeUOSYmzzsmc=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

@@ -52,11 +52,11 @@ var (
 	}
 )
 
-func BenchmarkCompareFormat(b *testing.B) {
+func BenchmarkFormat(b *testing.B) {
 	for _, tt := range tts2 {
 		tt := tt
 
-		l := datefmt.FastLayout(tt.layout)
+		l := datefmt.NewLayout(tt.layout)
 		b.Run("datefmt     "+tt.layout, func(b *testing.B) {
 			b.ReportAllocs()
 			for i := 0; i < b.N; i++ {
