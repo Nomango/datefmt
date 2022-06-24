@@ -22,8 +22,19 @@ t, err := datefmt.Parse("yyyy-MM-dd HH:mm:ss", "2022-06-20 09:49:10")
 
 // Parse time in location with general layout
 t, err := datefmt.ParseInLocation("yyyy-MM-dd HH:mm:ss", "2022-06-20 09:49:10", time.UTC)
+```
 
-// Get go-style layout
+Formatting with pre-created layout for better performance:
+
+```golang
+var CommonTimeFormat = datefmt.NewLayout("yyyy-MM-dd HH:mm:ss")
+
+CommonTimeFormat.Format(time.Now())
+```
+
+Convert general layout to go-style layout:
+
+```golang
 l := datefmt.GoLayout("yyyy-MM-dd HH:mm:ss") // l = '2006-01-02 15:04:05'
 ```
 

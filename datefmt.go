@@ -8,7 +8,8 @@ import (
 
 // Format is a general layout based version of time.Format
 func Format(t time.Time, generalLayout string) string {
-	return fastFormat(t, generalLayout)
+	l := getLayout(generalLayout)
+	return l.Format(t)
 }
 
 // Parse is a general layout based version of time.Parse
@@ -23,17 +24,28 @@ func ParseInLocation(generalLayout, value string, loc *time.Location) (time.Time
 
 // GoLayout returns a go-style layout according to the general layout defined by the argument.
 func GoLayout(generalLayout string) string {
-	v, ok := layoutCache.Load(generalLayout)
+	v, ok := goLayoutCache.Load(generalLayout)
 	if ok {
 		return v.(string)
 	}
-	v, _ = layoutCache.LoadOrStore(generalLayout, goLayout(generalLayout))
+	v, _ = goLayoutCache.LoadOrStore(generalLayout, getGoLayout(generalLayout))
 	return v.(string)
 }
 
 var layoutCache sync.Map
 
-func goLayout(generalLayout string) string {
+func getLayout(generalLayout string) *Layout {
+	v, ok := layoutCache.Load(generalLayout)
+	if ok {
+		return v.(*Layout)
+	}
+	v, _ = layoutCache.LoadOrStore(generalLayout, NewLayout(generalLayout))
+	return v.(*Layout)
+}
+
+var goLayoutCache sync.Map
+
+func getGoLayout(generalLayout string) string {
 	var (
 		l   = []byte(generalLayout)
 		n   = len(l)

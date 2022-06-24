@@ -9,26 +9,25 @@ import (
 )
 
 func ExampleFormat() {
-	t := time.Unix(1655689750, 0).In(time.UTC)
-	s := datefmt.Format(t, "yyyy-MM-dd HH:mm:ss Z z")
+	t := time.Date(2022, time.June, 20, 9, 49, 10, 0, time.UTC)
+	s := datefmt.Format(t, "yyyy-MM-dd HH:mm:ss")
 	fmt.Println(s)
 	// Output:
-	// 2022-06-20 01:49:10 +0000 UTC
+	// 2022-06-20 09:49:10
 }
 
 func ExampleParse() {
-	t, _ := datefmt.Parse("yyyy-MM-dd HH:mm:ss Z z", "2022-06-20 09:49:10 +0800 CST")
-	t = t.In(time.UTC)
+	t, _ := datefmt.Parse("yyyy-MM-dd HH:mm:ss z", "2022-06-20 09:49:10 CST")
 	fmt.Println(t)
 	// Output:
-	// 2022-06-20 01:49:10 +0000 UTC
+	// 2022-06-20 09:49:10 +0800 CST
 }
 
 func ExampleParseInLocation() {
-	t, _ := datefmt.ParseInLocation("yyyy-MM-dd HH:mm:ss z", "2022-06-20 09:49:10 CST", time.UTC)
+	t, _ := datefmt.ParseInLocation("yyyy-MM-dd HH:mm:ss", "2022-06-20 09:49:10", time.UTC)
 	fmt.Println(t)
 	// Output:
-	// 2022-06-20 09:49:10 +0000 CST
+	// 2022-06-20 09:49:10 +0000 UTC
 }
 
 func ExampleGoLayout() {
@@ -38,237 +37,334 @@ func ExampleGoLayout() {
 	// 2006-01-02 15:04:05 MST
 }
 
+type testCase struct {
+	in  time.Time
+	out string
+}
+
 var (
-	zoneCST, _  = time.LoadLocation("Asia/Shanghai")
-	testingTime = time.Unix(1655776150, 0).In(zoneCST)
-	tts         = []struct {
-		t        time.Time
-		layout   string
-		goLayout string
-		formated string
-		onlyStd  bool
-		onlyFast bool
+	formatTestCases = []struct {
+		layout    string
+		testCases []testCase
 	}{
 		{
-			t:        testingTime,
-			layout:   `yyyy-MM-dd HH:mm:ss z`,
-			goLayout: `2006-01-02 15:04:05 MST`,
-			formated: `2022-06-21 09:49:10 CST`,
+			layout: "G G",
+			testCases: []testCase{
+				{
+					in:  time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC),
+					out: "AD AD",
+				},
+				{
+					in:  time.Date(-1, time.January, 1, 0, 0, 0, 0, time.UTC),
+					out: "BC BC",
+				},
+			},
 		},
 		{
-			t:        testingTime,
-			layout:   `yyyy.MM.dd 'at' HH:mm:ss z`,
-			goLayout: `2006.01.02 at 15:04:05 MST`,
-			formated: `2022.06.21 at 09:49:10 CST`,
+			layout: "y yy yyy yyyy yyyyy Y YY YYY YYYY YYYYY",
+			testCases: []testCase{
+				{
+					in:  time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC),
+					out: "2022 22 2022 2022 02022 2021 21 2021 2021 02021",
+				},
+			},
 		},
 		{
-			t:        testingTime,
-			layout:   `EEE, MMM DDD, ''yy`,
-			goLayout: `Mon, Jan 002, '06`,
-			formated: `Tue, Jun 172, '22`,
+			layout: "M MM MMM MMMM MMMMM",
+			testCases: []testCase{
+				{
+					in:  time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC),
+					out: "1 01 Jan January January",
+				},
+				{
+					in:  time.Date(2022, time.February, 1, 0, 0, 0, 0, time.UTC),
+					out: "2 02 Feb February February",
+				},
+				{
+					in:  time.Date(2022, time.March, 1, 0, 0, 0, 0, time.UTC),
+					out: "3 03 Mar March March",
+				},
+				{
+					in:  time.Date(2022, time.April, 1, 0, 0, 0, 0, time.UTC),
+					out: "4 04 Apr April April",
+				},
+				{
+					in:  time.Date(2022, time.May, 1, 0, 0, 0, 0, time.UTC),
+					out: "5 05 May May May",
+				},
+				{
+					in:  time.Date(2022, time.June, 1, 0, 0, 0, 0, time.UTC),
+					out: "6 06 Jun June June",
+				},
+				{
+					in:  time.Date(2022, time.July, 1, 0, 0, 0, 0, time.UTC),
+					out: "7 07 Jul July July",
+				},
+				{
+					in:  time.Date(2022, time.August, 1, 0, 0, 0, 0, time.UTC),
+					out: "8 08 Aug August August",
+				},
+				{
+					in:  time.Date(2022, time.September, 1, 0, 0, 0, 0, time.UTC),
+					out: "9 09 Sep September September",
+				},
+				{
+					in:  time.Date(2022, time.October, 1, 0, 0, 0, 0, time.UTC),
+					out: "10 10 Oct October October",
+				},
+				{
+					in:  time.Date(2022, time.November, 1, 0, 0, 0, 0, time.UTC),
+					out: "11 11 Nov November November",
+				},
+				{
+					in:  time.Date(2022, time.December, 1, 0, 0, 0, 0, time.UTC),
+					out: "12 12 Dec December December",
+				},
+			},
 		},
 		{
-			t:        testingTime,
-			layout:   `h:mm a`,
-			goLayout: `3:04 PM`,
-			formated: `9:49 AM`,
+			layout: "w ww www W WW WWW F FF FFF",
+			testCases: []testCase{
+				{
+					in:  time.Date(2022, time.January, 3, 0, 0, 0, 0, time.UTC),
+					out: "1 01 001 2 02 002 1 01 001",
+				},
+				{
+					in:  time.Date(2022, time.July, 3, 12, 0, 0, 0, time.UTC),
+					out: "26 26 026 1 01 001 1 01 001",
+				},
+				{
+					in:  time.Date(2022, time.July, 4, 0, 0, 0, 0, time.UTC),
+					out: "27 27 027 2 02 002 1 01 001",
+				},
+				{
+					in:  time.Date(2022, time.July, 8, 0, 0, 0, 0, time.UTC),
+					out: "27 27 027 2 02 002 2 02 002",
+				},
+				{
+					in:  time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC),
+					out: "52 52 052 1 01 001 1 01 001",
+				},
+				{
+					in:  time.Date(2024, time.December, 30, 0, 0, 0, 0, time.UTC),
+					out: "1 01 001 6 06 006 5 05 005",
+				},
+			},
 		},
 		{
-			t:        testingTime,
-			layout:   `hh 'o''clock' a, z`,
-			goLayout: `03 o'clock PM, MST`,
-			formated: `09 o'clock AM, CST`,
+			layout: "E EE EEE EEEE EEEEE u uu",
+			testCases: []testCase{
+				{
+					in:  time.Date(2022, time.June, 20, 0, 0, 0, 0, time.UTC),
+					out: "Mon Mon Mon Monday Monday 1 01",
+				},
+				{
+					in:  time.Date(2022, time.June, 21, 0, 0, 0, 0, time.UTC),
+					out: "Tue Tue Tue Tuesday Tuesday 2 02",
+				},
+				{
+					in:  time.Date(2022, time.June, 22, 0, 0, 0, 0, time.UTC),
+					out: "Wed Wed Wed Wednesday Wednesday 3 03",
+				},
+				{
+					in:  time.Date(2022, time.June, 23, 0, 0, 0, 0, time.UTC),
+					out: "Thu Thu Thu Thursday Thursday 4 04",
+				},
+				{
+					in:  time.Date(2022, time.June, 24, 0, 0, 0, 0, time.UTC),
+					out: "Fri Fri Fri Friday Friday 5 05",
+				},
+				{
+					in:  time.Date(2022, time.June, 25, 0, 0, 0, 0, time.UTC),
+					out: "Sat Sat Sat Saturday Saturday 6 06",
+				},
+				{
+					in:  time.Date(2022, time.June, 26, 0, 0, 0, 0, time.UTC),
+					out: "Sun Sun Sun Sunday Sunday 7 07",
+				},
+			},
 		},
 		{
-			t:        testingTime,
-			layout:   `yyyy.MMMMM.dd hh:mm aaa`,
-			goLayout: `2006.January.02 03:04 PM`,
-			formated: `2022.June.21 09:49 AM`,
+			layout: "d dd ddd D DD DDD DDDD",
+			testCases: []testCase{
+				{
+					in:  time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC),
+					out: "1 01 001 1 01 001 0001",
+				},
+				{
+					in:  time.Date(2022, time.January, 31, 0, 0, 0, 0, time.UTC),
+					out: "31 31 031 31 31 031 0031",
+				},
+				{
+					in:  time.Date(2022, time.February, 1, 0, 0, 0, 0, time.UTC),
+					out: "1 01 001 32 32 032 0032",
+				},
+			},
 		},
 		{
-			t:        testingTime,
-			layout:   `EEE, d MMM yyyy HH:mm:ss Z`,
-			goLayout: `Mon, 2 Jan 2006 15:04:05 -0700`,
-			formated: `Tue, 21 Jun 2022 09:49:10 +0800`,
+			layout: "H HH h hh K KK k kk a",
+			testCases: []testCase{
+				{
+					in:  time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC),
+					out: "0 00 12 12 0 00 24 24 AM",
+				},
+				{
+					in:  time.Date(2022, time.January, 1, 1, 0, 0, 0, time.UTC),
+					out: "1 01 1 01 1 01 1 01 AM",
+				},
+				{
+					in:  time.Date(2022, time.January, 1, 12, 0, 0, 0, time.UTC),
+					out: "12 12 12 12 0 00 12 12 PM",
+				},
+				{
+					in:  time.Date(2022, time.January, 1, 15, 0, 0, 0, time.UTC),
+					out: "15 15 3 03 3 03 15 15 PM",
+				},
+			},
 		},
 		{
-			t:        testingTime,
-			layout:   `yyMMddHHmmssZ`,
-			goLayout: `060102150405-0700`,
-			formated: `220621094910+0800`,
+			layout: "m mm s ss S SS SSS",
+			testCases: []testCase{
+				{
+					in:  time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC),
+					out: "0 00 0 00 0 00 000",
+				},
+				{
+					in:  time.Date(2022, time.January, 1, 0, 1, 1, 1999999, time.UTC),
+					out: "1 01 1 01 0 00 001",
+				},
+				{
+					in:  time.Date(2022, time.January, 1, 0, 59, 59, 181999999, time.UTC),
+					out: "59 59 59 59 1 18 181",
+				},
+			},
 		},
 		{
-			t:        time.Unix(1655776150, 181999999).In(zoneCST),
-			layout:   `yyyy-MM-dd'T'HH:mm:ss.SSSZ`,
-			goLayout: `2006-01-02T15:04:05.000-0700`,
-			formated: `2022-06-21T09:49:10.181+0800`,
+			layout: "z zz Z ZZ X XX XXX XXXX",
+			testCases: []testCase{
+				{
+					in:  time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC),
+					out: "UTC UTC +0000 +0000 Z Z Z Z",
+				},
+				{
+					in:  time.Date(2022, time.January, 1, 0, 0, 0, 0, time.FixedZone("CST", int((8*time.Hour).Seconds()))),
+					out: "CST CST +0800 +0800 +08 +0800 +08:00 +08:00",
+				},
+				{
+					in:  time.Date(2022, time.January, 1, 0, 0, 0, 0, time.FixedZone("EST", -int((5*time.Hour).Seconds()))),
+					out: "EST EST -0500 -0500 -05 -0500 -05:00 -05:00",
+				},
+				{
+					in:  time.Date(2022, time.January, 1, 0, 0, 0, 0, time.FixedZone("", int((8*time.Hour+30*time.Minute).Seconds()))),
+					out: "+0830 +0830 +0830 +0830 +08 +0830 +08:30 +08:30",
+				},
+			},
 		},
 		{
-			t:        time.Unix(1655776150, 181999999).In(zoneCST),
-			layout:   `YY-M-dd'T'HH:m:s.SSSXXX EEEE`,
-			goLayout: `06-1-02T15:4:5.000Z07:00 Monday`,
-			formated: `22-6-21T09:49:10.181+08:00 Tuesday`,
-			onlyStd:  true,
+			layout: "yyyy-MM-dd'T'HH:mm:ss.SSS z",
+			testCases: []testCase{
+				{
+					in:  time.Date(2022, time.June, 20, 21, 49, 10, 181999999, time.UTC),
+					out: "2022-06-20T21:49:10.181 UTC",
+				},
+			},
 		},
 		{
-			t:      time.Unix(1655776150, 181999999).In(zoneCST),
-			layout: `YY-M-dd'T'H:m:s.SSSXXX EEEE`,
-			// goLayout: `06-1-02T15:4:5.000Z07:00 Monday`,
-			formated: `22-6-21T9:49:10.181+08:00 Tuesday`,
-			onlyFast: true,
+			layout: "'o''clock' ''''",
+			testCases: []testCase{
+				{
+					in:  time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC),
+					out: "o'clock ''",
+				},
+			},
+		},
+	}
+
+	goLayoutTestCases = []struct {
+		in  string
+		out string
+	}{
+		{
+			in:  `yyyy-MM-dd HH:mm:ss z`,
+			out: `2006-01-02 15:04:05 MST`,
 		},
 		{
-			t:        testingTime,
-			layout:   `YYYY-'M'MM-u`,
-			formated: `2022-M06-2`,
-			onlyFast: true,
+			in:  `yyyy.MM.dd 'at' HH:mm:ss z`,
+			out: `2006.01.02 at 15:04:05 MST`,
 		},
 		{
-			t:        time.Unix(1642740550, 0).In(zoneCST),
-			layout:   `DDD hh a X`,
-			goLayout: `002 03 PM Z07`,
-			formated: `021 12 PM +08`,
+			in:  `EEE, MMM DDD, ''yy`,
+			out: `Mon, Jan 002, '06`,
 		},
 		{
-			t:      time.Unix(1642740550, 0).In(zoneCST),
-			layout: `D`,
-			// goLayout: `002 03 PM Z07`,
-			formated: `21`,
-			onlyFast: true,
+			in:  `h:mm a`,
+			out: `3:04 PM`,
 		},
 		{
-			t:        testingTime,
-			layout:   `XX`,
-			goLayout: `Z0700`,
-			formated: `+0800`,
+			in:  `hh 'o''clock' a, z`,
+			out: `03 o'clock PM, MST`,
 		},
 		{
-			t:        time.Unix(1642772950, 0).In(time.FixedZone("", -120)),
-			layout:   `z`,
-			goLayout: `MST`,
-			formated: `-0002`,
+			in:  `yyyy.MMMMM.dd hh:mm aaa`,
+			out: `2006.January.02 03:04 PM`,
 		},
 		{
-			t:        time.Unix(1642772950, 0).In(time.FixedZone("", 0)),
-			layout:   `X`,
-			goLayout: `Z07`,
-			formated: `Z`,
+			in:  `EEE, d MMM yyyy HH:mm:ss Z`,
+			out: `Mon, 2 Jan 2006 15:04:05 -0700`,
 		},
 		{
-			t:        time.Unix(1642772950, 81999999),
-			layout:   `.SSS`,
-			goLayout: `.000`,
-			formated: `.081`,
+			in:  `yyMMddHHmmssZ`,
+			out: `060102150405-0700`,
 		},
 		{
-			t:        testingTime,
-			layout:   `''''`,
-			goLayout: `''`,
-			formated: `''`,
+			in:  `yyyy-MM-dd'T'HH:mm:ss.SSSZ`,
+			out: `2006-01-02T15:04:05.000-0700`,
 		},
 		{
-			t:        time.Date(2022, time.July, 3, 12, 0, 0, 0, time.UTC),
-			layout:   `G F FF W WW w ww u k kk K KK`,
-			formated: `AD 1 01 1 01 26 26 7 12 12 0 00`,
-			onlyFast: true,
+			in:  `YY-M-dd'T'HH:m:s.SSSXXX EEEE`,
+			out: `06-1-02T15:4:5.000Z07:00 Monday`,
 		},
 		{
-			t:        time.Date(2022, time.July, 4, 0, 0, 0, 0, time.UTC),
-			layout:   `G F FF W WW w ww u k kk K KK`,
-			formated: `AD 1 01 2 02 27 27 1 24 24 0 00`,
-			onlyFast: true,
+			in:  `DDD hh a z X XX XXX .SSS S`,
+			out: `002 03 PM MST Z07 Z0700 Z07:00 .000 S`,
 		},
 		{
-			t:        time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC),
-			layout:   `ww WW FF`,
-			formated: `52 01 01`,
-			onlyFast: true,
-		},
-		{
-			t:        time.Date(2022, time.January, 3, 0, 0, 0, 0, time.UTC),
-			layout:   `ww WW FF`,
-			formated: `01 02 01`,
-			onlyFast: true,
-		},
-		{
-			t:        time.Date(2024, time.December, 30, 0, 0, 0, 0, time.UTC),
-			layout:   `ww WW FF`,
-			formated: `01 06 05`,
-			onlyFast: true,
-		},
-		{
-			t:        time.Date(-1, time.January, 1, 0, 0, 0, 0, time.UTC),
-			layout:   `G`,
-			formated: `BC`,
-			onlyFast: true,
-		},
-		{
-			t:        time.Date(2022, time.January, 0, 0, 0, 0, 0, time.UTC),
-			layout:   `S`,
-			goLayout: `S`,
-			formated: `S`,
-			onlyStd:  true,
+			in:  `''''`,
+			out: `''`,
 		},
 	}
 )
 
-func TestGoLayout(t *testing.T) {
-	for _, tt := range tts {
-		if tt.onlyFast {
-			continue
-		}
-		l := datefmt.GoLayout(tt.layout)
-		if l != tt.goLayout {
-			t.Errorf("GoLayout(%s) = %s; want %s", tt.layout, l, tt.goLayout)
-		}
-	}
-}
-
 func TestFormat(t *testing.T) {
-	for _, tt := range tts {
-		if tt.onlyStd {
-			continue
-		}
-		r := datefmt.Format(tt.t, tt.layout)
-		if r != tt.formated {
-			t.Errorf("Format(%d, %s) = %s; want %s", tt.t.Unix(), tt.layout, r, tt.formated)
+	for _, tt := range formatTestCases {
+		for _, c := range tt.testCases {
+			r := datefmt.Format(c.in, tt.layout)
+			if r != c.out {
+				t.Errorf("Format(%d, %s) = %s; want %s", c.in.Unix(), tt.layout, r, c.out)
+			}
 		}
 	}
 }
 
 func TestFormatStable(t *testing.T) {
-	for _, tt := range tts {
-		tt := tt
-		if tt.onlyStd {
-			continue
-		}
+	for _, tt := range formatTestCases {
 		t.Run(tt.layout, func(t *testing.T) {
 			t.Parallel()
-			for i := 0; i < 5; i++ {
-				r := datefmt.Format(tt.t, tt.layout)
-				if r != tt.formated {
-					t.Errorf("Format(%d, %s) = %s; want %s", tt.t.Unix(), tt.layout, r, tt.formated)
+			for _, c := range tt.testCases {
+				r := datefmt.Format(c.in, tt.layout)
+				if r != c.out {
+					t.Errorf("Format(%d, %s) = %s; want %s", c.in.Unix(), tt.layout, r, c.out)
 				}
 			}
 		})
 	}
 }
 
-func TestParse(t *testing.T) {
-	for _, tt := range tts {
-		if tt.onlyFast {
-			continue
-		}
-		r1, err := datefmt.Parse(tt.layout, tt.formated)
-		if err != nil {
-			t.Errorf("datefmt.Parse(%s, %s) got an error: %v", tt.layout, tt.formated, err)
-		}
-		r2, err := time.Parse(tt.goLayout, tt.formated)
-		if err != nil {
-			t.Errorf("time.Parse(%s, %s) got an error: %v", tt.goLayout, tt.formated, err)
-		}
-		if !r1.Equal(r2) {
-			t.Errorf("Parse(%s, %s) = %v; want %v", tt.layout, tt.formated, r1, r2)
+func TestGoLayout(t *testing.T) {
+	for _, tt := range goLayoutTestCases {
+		l := datefmt.GoLayout(tt.in)
+		if l != tt.out {
+			t.Errorf("GoLayout(%s) = %s; want %s", tt.in, l, tt.out)
 		}
 	}
 }

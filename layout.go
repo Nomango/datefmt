@@ -2,21 +2,19 @@ package datefmt
 
 import (
 	"strings"
-	"sync"
 	"time"
 	"unsafe"
 )
-
-func fastFormat(t time.Time, generalLayout string) string {
-	l := FastLayout(generalLayout)
-	return l.Format(t)
-}
 
 type Layout struct {
 	max    int
 	flag   formatFlag
 	args   []*formatArg
 	layout string
+}
+
+func (l *Layout) String() string {
+	return l.layout
 }
 
 func (l *Layout) Format(t time.Time) string {
@@ -94,18 +92,7 @@ func (l *Layout) Format(t time.Time) string {
 	return readOnlyBytes2String(p)
 }
 
-var fastLayoutCache sync.Map
-
-func FastLayout(generalLayout string) *Layout {
-	v, ok := fastLayoutCache.Load(generalLayout)
-	if ok {
-		return v.(*Layout)
-	}
-	v, _ = fastLayoutCache.LoadOrStore(generalLayout, newFastLayout(generalLayout))
-	return v.(*Layout)
-}
-
-func newFastLayout(generalLayout string) *Layout {
+func NewLayout(generalLayout string) *Layout {
 	var (
 		l    = Layout{layout: generalLayout}
 		gl   = []byte(generalLayout)
